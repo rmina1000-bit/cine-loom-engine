@@ -136,7 +136,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   const excludedCount = fragments.length - activeFragments.length;
 
   return (
-    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden">
+    <div className="flex flex-col bg-card/50 rounded-lg">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
