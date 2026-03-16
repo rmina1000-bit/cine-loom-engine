@@ -78,7 +78,8 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     boundaryStartX.current = e.clientX;
     boundaryOrigLeft.current = fragments[index].duration;
     boundaryOrigRight.current = fragments[index + 1].duration;
-  }, [fragments]);
+    onBoundaryDragChange?.(fragments[index], fragments[index + 1]);
+  }, [fragments, onBoundaryDragChange]);
 
   useEffect(() => {
     if (boundaryDragIndex === null) return;
