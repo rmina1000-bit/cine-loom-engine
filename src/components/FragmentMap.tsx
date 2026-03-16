@@ -196,7 +196,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
               {/* Exclude/Restore toggle button on selected fragment */}
               {selectedFragmentId === f.fragment_id && (
                 <button
-                  className="fragment-tile absolute -top-2 -right-2 z-30 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                  className="fragment-tile absolute top-1 right-1 z-30 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
                   title={f.excluded ? "Restore to render" : "Exclude from render"}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
