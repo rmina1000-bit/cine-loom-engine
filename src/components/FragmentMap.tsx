@@ -29,6 +29,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   onRestoreFragment,
   onMoveToHold,
   onBoundaryDragChange,
+}) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
