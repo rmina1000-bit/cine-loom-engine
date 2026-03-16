@@ -195,14 +195,16 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
                 {/* Exclude/Restore toggle button on selected fragment */}
                 {selectedFragmentId === f.fragment_id && (
                   <button
-                    className="absolute top-0.5 right-0.5 z-10 p-0.5 rounded bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
+                    className="fragment-tile absolute -top-2 -right-2 z-20 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
                     title={f.excluded ? "Restore to render" : "Exclude from render"}
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       f.excluded ? onRestoreFragment(f) : onExcludeFragment(f);
                     }}
                   >
-                    {f.excluded ? <Eye size={10} /> : <EyeOff size={10} />}
+                    {f.excluded ? <Eye size={12} /> : <EyeOff size={12} />}
                   </button>
                 )}
               </div>
