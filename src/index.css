@@ -148,3 +148,12 @@
   opacity: 0.55 !important;
   filter: grayscale(0.3);
 }
+
+/* Synthetic collapsed seam — indicates hidden excluded structure */
+.synthetic-seam {
+  transition: background 0.1s ease-out;
+}
+.synthetic-seam:hover,
+.synthetic-seam-hover {
+  background: hsl(var(--ccut-amber) / 0.06);
+}
