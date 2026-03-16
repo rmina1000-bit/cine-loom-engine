@@ -135,3 +135,13 @@
   background: hsl(var(--primary)) !important;
   width: 4px !important;
 }
+
+/* Excluded fragment — structurally present but excluded from render */
+.excluded-fragment {
+  filter: grayscale(0.6);
+  transition: opacity 0.2s, filter 0.2s;
+}
+.excluded-fragment:hover {
+  opacity: 0.55 !important;
+  filter: grayscale(0.3);
+}

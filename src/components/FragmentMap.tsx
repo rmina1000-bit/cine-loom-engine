@@ -10,6 +10,8 @@ interface FragmentMapProps {
   onFragmentClick: (f: Fragment) => void;
   onFragmentDoubleClick: (f: Fragment) => void;
   onExcludeFragment: (f: Fragment) => void;
+  onRestoreFragment: (f: Fragment) => void;
+  onMoveToHold: (f: Fragment) => void;
 }
 
 const MIN_FRAGMENT_DURATION = 15; // minimum frames a fragment can shrink to
@@ -22,6 +24,8 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   onFragmentClick,
   onFragmentDoubleClick,
   onExcludeFragment,
+  onRestoreFragment,
+  onMoveToHold,
 }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -127,16 +131,21 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   }
   boundaries.push(runningFrame);
 
+  const activeFragments = fragments.filter(f => !f.excluded);
+  const excludedCount = fragments.length - activeFragments.length;
+
   return (
     <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold text-foreground tracking-wide">Edit Structure</h3>
-          <span className="text-[10px] text-muted-foreground">({fragments.length} fragments)</span>
+          <span className="text-[10px] text-muted-foreground">
+            ({activeFragments.length} active{excludedCount > 0 ? ` · ${excludedCount} excluded` : ""})
+          </span>
           <span className="text-[10px] text-muted-foreground/60">·</span>
           <span className="text-[10px] text-muted-foreground/60">
-            {fragments.map(f => f.fragment_id).join(" → ")}
+            {activeFragments.map(f => f.fragment_id).join(" → ")}
           </span>
         </div>
         <span className="text-[10px] text-muted-foreground">
@@ -153,27 +162,35 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
               <div className="w-0.5 h-[72px] bg-primary rounded-full mx-0.5 flex-shrink-0 self-stretch" />
             )}
             <div
-              draggable={boundaryDragIndex === null}
+              draggable={boundaryDragIndex === null && !f.excluded}
               onDragStart={(e) => handleDragStart(e, f.fragment_id)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={() => setDragOverIndex(null)}
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
-              className="flex items-stretch"
-              style={{ opacity: draggedId === f.fragment_id ? 0.4 : 1 }}
+              className={`flex items-stretch relative ${f.excluded ? "excluded-fragment" : ""}`}
+              style={{ opacity: draggedId === f.fragment_id ? 0.4 : f.excluded ? 0.35 : 1 }}
             >
-              <div>
+              <div className="relative">
                 <FragmentTile
                   fragment={f}
                   isSelected={selectedFragmentId === f.fragment_id}
                   isHighlighted={false}
                   isExpanded={expandedFragmentId === f.fragment_id}
                   hasActiveSelection={!!selectedFragmentId}
-                  onClick={() => onFragmentClick(f)}
-                  onDoubleClick={() => onFragmentDoubleClick(f)}
+                  onClick={() => f.excluded ? onRestoreFragment(f) : onFragmentClick(f)}
+                  onDoubleClick={() => !f.excluded && onFragmentDoubleClick(f)}
                   widthScale={0.7}
                   variant="edit"
                 />
+                {/* Excluded overlay indicator */}
+                {f.excluded && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="bg-background/70 rounded px-1.5 py-0.5 text-[8px] text-muted-foreground font-medium tracking-wide uppercase">
+                      excluded
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Shared boundary handle - draggable to redistribute duration */}
               {index < fragments.length - 1 && (
@@ -194,7 +211,11 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
           {fragments.map((f, i) => (
             <div
               key={f.fragment_id}
-              className="flex items-center justify-between h-full text-[7px] text-muted-foreground/40 border-t border-border/20"
+              className={`flex items-center justify-between h-full text-[7px] border-t ${
+                f.excluded
+                  ? "text-muted-foreground/20 border-border/10"
+                  : "text-muted-foreground/40 border-border/20"
+              }`}
               style={{ width: Math.max(48, f.duration * 0.7) }}
             >
               <span className="pl-0.5">F{boundaries[i]}</span>

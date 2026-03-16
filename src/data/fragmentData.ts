@@ -13,6 +13,7 @@ export interface Fragment {
   duration: number;
   thumbnail_hue: number; // hue for generated/fallback thumbnail color
   thumbnail?: FragmentThumbnailMeta; // real thumbnail data when available
+  excluded?: boolean; // excluded from render but structurally present for boundaries
   intelligence?: {
     narrative: number;    // 0-1
     emotional: number;
