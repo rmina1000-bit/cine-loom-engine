@@ -64,6 +64,28 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
   const playInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Separated single-click / double-click handler
+  const handleClick = (e: React.MouseEvent) => {
+    if (clickTimer.current) {
+      // Double click detected
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      onDoubleClick?.();
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        onClick();
+      }, 220);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clickTimer.current) clearTimeout(clickTimer.current);
+    };
+  }, []);
 
   // Hover preview: animate a gradient sweep to simulate playback
   useEffect(() => {
