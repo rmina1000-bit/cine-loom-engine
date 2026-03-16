@@ -184,8 +184,8 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     };
   }, [boundaryDragIndex, fragments, onFragmentsChange, onBoundaryDragChange]);
 
-  // Precision overlay boundary drag
-  const handleOverlayBoundaryDrag = useCallback((leftRealIdx: number, rightRealIdx: number, deltaFrames: number) => {
+  // Precision overlay: commit on mouseUp only (board stays stable during drag)
+  const handleOverlayCommit = useCallback((leftRealIdx: number, rightRealIdx: number, deltaFrames: number) => {
     const left = fragments[leftRealIdx];
     const right = fragments[rightRealIdx];
     if (!left || !right) return;
@@ -198,11 +198,11 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     newFrags[leftRealIdx] = { ...left, duration: newLeftDur, end_frame: left.start_frame + newLeftDur };
     newFrags[rightRealIdx] = { ...right, duration: newRightDur, start_frame: right.end_frame - newRightDur };
     onFragmentsChange(newFrags);
-    onBoundaryDragChange?.(newFrags[leftRealIdx], newFrags[rightRealIdx]);
-  }, [fragments, onFragmentsChange, onBoundaryDragChange]);
+  }, [fragments, onFragmentsChange]);
 
-  const handleOverlayDragEnd = useCallback(() => {
-    onBoundaryDragChange?.(null, null);
+  // Source recall during overlay drag (lightweight, no board mutation)
+  const handleOverlaySourceRecall = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
+    onBoundaryDragChange?.(leftFrag, rightFrag);
   }, [onBoundaryDragChange]);
 
   const handleOverlayClose = useCallback(() => {
