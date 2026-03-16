@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Fragment, formatDuration } from "@/data/fragmentData";
 import { motion } from "framer-motion";
+import { Play, Pause } from "lucide-react";
 
 interface FragmentTileProps {
   fragment: Fragment;
@@ -33,11 +34,54 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   const width = isExpanded ? baseWidth * 2 : baseWidth;
   const height = variant === "panorama" ? 64 : variant === "reserved" ? 56 : 72;
 
+  const [isHovering, setIsHovering] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playProgress, setPlayProgress] = useState(0);
+  const playInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Hover preview: animate a gradient sweep to simulate playback
+  useEffect(() => {
+    if (isHovering && !isPlaying) {
+      // Subtle preview animation on hover
+    }
+  }, [isHovering, isPlaying]);
+
+  // Click-to-play: simulate playback progress
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPlaying) {
+      setIsPlaying(false);
+      if (playInterval.current) clearInterval(playInterval.current);
+      playInterval.current = null;
+    } else {
+      setIsPlaying(true);
+      setPlayProgress(0);
+      playInterval.current = setInterval(() => {
+        setPlayProgress(prev => {
+          if (prev >= 100) {
+            setIsPlaying(false);
+            if (playInterval.current) clearInterval(playInterval.current);
+            return 0;
+          }
+          return prev + 2;
+        });
+      }, 50);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (playInterval.current) clearInterval(playInterval.current);
+    };
+  }, []);
+
   return (
     <motion.div
-      layout
-      layoutId={`${variant}-${fragment.fragment_id}`}
+      layout={variant !== "reserved"}
+      layoutId={variant !== "reserved" ? `${variant}-${fragment.fragment_id}` : undefined}
       onClick={onClick}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => { setIsHovering(false); }}
       className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
         ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
         border`}
@@ -46,7 +90,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
         scale: isHighlighted ? 1.04 : 1,
       }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      whileHover={{ scale: 1.03 }}
+      whileHover={{ scale: variant === "reserved" ? 1 : 1.03 }}
     >
       {/* Background gradient thumbnail */}
       <div
@@ -56,6 +100,34 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
         }}
       />
 
+      {/* Hover preview animation - sweeping highlight */}
+      {isHovering && !isPlaying && (
+        <div
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{
+            background: `linear-gradient(90deg, transparent 0%, hsl(${hue} 30% 30% / 0.4) 50%, transparent 100%)`,
+            animation: "preview-sweep 1.5s ease-in-out infinite",
+          }}
+        />
+      )}
+
+      {/* Playing state - progress bar and scanning effect */}
+      {isPlaying && (
+        <>
+          <div
+            className="absolute inset-0 z-10 pointer-events-none"
+            style={{
+              background: `linear-gradient(90deg, hsl(${hue} 25% 25% / 0.5) ${playProgress}%, transparent ${playProgress + 2}%)`,
+            }}
+          />
+          {/* Playhead line */}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-primary z-20 pointer-events-none"
+            style={{ left: `${playProgress}%` }}
+          />
+        </>
+      )}
+
       {/* Selection overlay */}
       {isSelected && (
         <div className="absolute inset-0 bg-primary/10" />
@@ -63,13 +135,46 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
 
       {/* Content */}
       <div className="relative z-10 flex flex-col justify-between h-full p-1.5">
-        <span className="text-[10px] font-semibold text-foreground/90 leading-none">
-          {fragment.fragment_id}
-        </span>
-        <span className="text-[9px] text-foreground/50 self-end leading-none">
-          {formatDuration(fragment.duration)}
-        </span>
+        <div className="flex items-start justify-between">
+          <span className="text-[10px] font-semibold text-foreground/90 leading-none">
+            {fragment.fragment_id}
+          </span>
+          {/* Play button - visible on hover */}
+          {isHovering && (
+            <button
+              onClick={togglePlay}
+              className="w-4 h-4 rounded-full bg-foreground/20 hover:bg-foreground/40 flex items-center justify-center transition-all"
+            >
+              {isPlaying ? (
+                <Pause size={8} className="text-foreground" />
+              ) : (
+                <Play size={8} className="text-foreground ml-px" />
+              )}
+            </button>
+          )}
+        </div>
+        <div className="flex items-end justify-between">
+          <span className="text-[9px] text-foreground/50 leading-none">
+            {formatDuration(fragment.duration)}
+          </span>
+          {/* Playback progress indicator */}
+          {isPlaying && (
+            <span className="text-[8px] text-primary/80 leading-none">
+              {Math.round(playProgress)}%
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Progress bar at bottom during playback */}
+      {isPlaying && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground/10 z-30">
+          <div
+            className="h-full bg-primary/70 transition-all"
+            style={{ width: `${playProgress}%` }}
+          />
+        </div>
+      )}
 
       {/* Intelligence overlay dots */}
       {showIntelligence && fragment.intelligence && (
@@ -90,7 +195,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       )}
 
       {/* Intelligence heat bar */}
-      {showIntelligence && fragment.intelligence && (
+      {showIntelligence && fragment.intelligence && !isPlaying && (
         <div className="absolute bottom-0 left-0 right-0 h-1 z-20">
           <div
             className="h-full"
