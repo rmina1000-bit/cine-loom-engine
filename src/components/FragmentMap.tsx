@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Fragment } from "@/data/fragmentData";
 import FragmentTile from "./FragmentTile";
+import BoundaryPrecisionOverlay from "./BoundaryPrecisionOverlay";
 import { EyeOff, Eye } from "lucide-react";
 
 interface FragmentMapProps {
@@ -16,7 +17,7 @@ interface FragmentMapProps {
   onBoundaryDragChange?: (leftFrag: Fragment | null, rightFrag: Fragment | null) => void;
 }
 
-const MIN_FRAGMENT_DURATION = 15; // minimum frames a fragment can shrink to
+const MIN_FRAGMENT_DURATION = 15;
 
 const FragmentMap: React.FC<FragmentMapProps> = ({
   fragments,
@@ -38,6 +39,13 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   const boundaryStartX = useRef(0);
   const boundaryOrigLeft = useRef(0);
   const boundaryOrigRight = useRef(0);
+
+  // Precision overlay state
+  const [precisionOverlay, setPrecisionOverlay] = useState<{
+    chainIndices: number[];        // indices into fragments[] for the revealed chain
+    activeBoundaryInChain: number; // which boundary within the chain was clicked
+    anchorRect: DOMRect;
+  } | null>(null);
 
   // Reorder drag handlers
   const handleDragStart = useCallback((e: React.DragEvent, fragId: string) => {
@@ -71,16 +79,71 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     setDragOverIndex(null);
   }, []);
 
-  // Boundary drag: redistribute duration between adjacent fragments
+  // Check if a boundary at `index` (between fragments[index] and fragments[index+1])
+  // involves any excluded fragments nearby. If so, return the chain of indices to reveal.
+  const getExcludedChain = useCallback((boundaryIndex: number): number[] | null => {
+    const left = fragments[boundaryIndex];
+    const right = fragments[boundaryIndex + 1];
+    if (!left || !right) return null;
+
+    // If neither side is excluded and no excluded neighbors, no overlay needed
+    const hasExcluded = left.excluded || right.excluded;
+    if (!hasExcluded) {
+      // Check if there's an excluded fragment just outside
+      const farLeft = boundaryIndex > 0 ? fragments[boundaryIndex - 1] : null;
+      const farRight = boundaryIndex + 2 < fragments.length ? fragments[boundaryIndex + 2] : null;
+      if (!farLeft?.excluded && !farRight?.excluded) return null;
+    }
+
+    // Expand outward to collect the contiguous chain involving excluded fragments
+    let startIdx = boundaryIndex;
+    let endIdx = boundaryIndex + 1;
+
+    // Expand left while excluded
+    while (startIdx > 0 && fragments[startIdx].excluded) startIdx--;
+    // Also include one more non-excluded for context if we moved
+    if (startIdx > 0 && fragments[startIdx - 1] && !fragments[startIdx].excluded && fragments[startIdx + 1]?.excluded) {
+      // already at a non-excluded, good
+    }
+
+    // Expand right while excluded
+    while (endIdx < fragments.length - 1 && fragments[endIdx].excluded) endIdx++;
+
+    // Ensure we have at least one non-excluded on each side for context
+    if (startIdx > 0 && fragments[startIdx].excluded) startIdx--;
+    if (endIdx < fragments.length - 1 && fragments[endIdx].excluded) endIdx++;
+
+    const indices: number[] = [];
+    for (let i = startIdx; i <= endIdx; i++) indices.push(i);
+
+    return indices.length > 2 ? indices : (hasExcluded ? indices : null);
+  }, [fragments]);
+
+  // Boundary handle click: check for precision overlay or direct drag
   const handleBoundaryMouseDown = useCallback((e: React.MouseEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const chain = getExcludedChain(index);
+    if (chain && chain.length >= 2) {
+      // Show precision overlay instead of direct drag
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const activeBoundaryInChain = chain.indexOf(index);
+      setPrecisionOverlay({
+        chainIndices: chain,
+        activeBoundaryInChain,
+        anchorRect: rect,
+      });
+      return;
+    }
+
+    // Normal boundary drag (no excluded fragments nearby)
     setBoundaryDragIndex(index);
     boundaryStartX.current = e.clientX;
     boundaryOrigLeft.current = fragments[index].duration;
     boundaryOrigRight.current = fragments[index + 1].duration;
     onBoundaryDragChange?.(fragments[index], fragments[index + 1]);
-  }, [fragments, onBoundaryDragChange]);
+  }, [fragments, onBoundaryDragChange, getExcludedChain]);
 
   const rafId = useRef<number | null>(null);
   const pendingDelta = useRef<number>(0);
@@ -139,6 +202,37 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     };
   }, [boundaryDragIndex, fragments, onFragmentsChange]);
 
+  // Precision overlay boundary drag handler
+  const handleOverlayBoundaryDrag = useCallback((chainBoundaryIndex: number, deltaFrames: number) => {
+    if (!precisionOverlay) return;
+    const realIndex = precisionOverlay.chainIndices[chainBoundaryIndex];
+    const realNextIndex = precisionOverlay.chainIndices[chainBoundaryIndex + 1];
+    if (realIndex === undefined || realNextIndex === undefined) return;
+
+    const left = fragments[realIndex];
+    const right = fragments[realNextIndex];
+    const newLeftDur = left.duration + deltaFrames;
+    const newRightDur = right.duration - deltaFrames;
+    if (newLeftDur < MIN_FRAGMENT_DURATION || newRightDur < MIN_FRAGMENT_DURATION) return;
+
+    const newFrags = [...fragments];
+    newFrags[realIndex] = { ...left, duration: newLeftDur, end_frame: left.start_frame + newLeftDur };
+    newFrags[realNextIndex] = { ...right, duration: newRightDur, start_frame: right.end_frame - newRightDur };
+    onFragmentsChange(newFrags);
+
+    // Also trigger source recall
+    onBoundaryDragChange?.(newFrags[realIndex], newFrags[realNextIndex]);
+  }, [precisionOverlay, fragments, onFragmentsChange, onBoundaryDragChange]);
+
+  const handleOverlayDragEnd = useCallback(() => {
+    onBoundaryDragChange?.(null, null);
+  }, [onBoundaryDragChange]);
+
+  const handleOverlayClose = useCallback(() => {
+    setPrecisionOverlay(null);
+    onBoundaryDragChange?.(null, null);
+  }, [onBoundaryDragChange]);
+
   // Compute continuous boundary positions for display
   const boundaries: number[] = [];
   let runningFrame = 0;
@@ -150,6 +244,11 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
 
   const activeFragments = fragments.filter(f => !f.excluded);
   const excludedCount = fragments.length - activeFragments.length;
+
+  // Get the chain fragments for the overlay
+  const overlayChainFragments = precisionOverlay
+    ? precisionOverlay.chainIndices.map(i => fragments[i])
+    : [];
 
   return (
     <div className="flex flex-col bg-card/50 rounded-lg">
@@ -220,11 +319,18 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
                   {f.excluded ? <Eye size={12} /> : <EyeOff size={12} />}
                 </button>
               )}
-              {/* Shared boundary handle - draggable to redistribute duration */}
+              {/* Shared boundary handle */}
               {index < fragments.length - 1 && (
                 <div
-                  className={`boundary-handle self-stretch ${boundaryDragIndex === index ? "boundary-handle-active" : ""}`}
-                  title={`Boundary F${boundaries[index + 1]} · Drag to redistribute`}
+                  className={`boundary-handle self-stretch ${boundaryDragIndex === index ? "boundary-handle-active" : ""} ${
+                    // Visual hint: if excluded fragment is adjacent, show subtle indicator
+                    (f.excluded || fragments[index + 1]?.excluded) ? "boundary-handle-precision" : ""
+                  }`}
+                  title={
+                    (f.excluded || fragments[index + 1]?.excluded)
+                      ? `Boundary F${boundaries[index + 1]} · Click for precision mode`
+                      : `Boundary F${boundaries[index + 1]} · Drag to redistribute`
+                  }
                   onMouseDown={(e) => handleBoundaryMouseDown(e, index)}
                 />
               )}
@@ -254,6 +360,18 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Precision overlay for excluded-boundary disambiguation */}
+      {precisionOverlay && (
+        <BoundaryPrecisionOverlay
+          fragments={overlayChainFragments}
+          activeBoundaryIndex={precisionOverlay.activeBoundaryInChain}
+          anchorRect={precisionOverlay.anchorRect}
+          onBoundaryDrag={handleOverlayBoundaryDrag}
+          onDragEnd={handleOverlayDragEnd}
+          onClose={handleOverlayClose}
+        />
+      )}
     </div>
   );
 };
