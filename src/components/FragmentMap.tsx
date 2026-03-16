@@ -82,36 +82,42 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     onBoundaryDragChange?.(fragments[index], fragments[index + 1]);
   }, [fragments, onBoundaryDragChange]);
 
+  const rafId = useRef<number | null>(null);
+  const pendingDelta = useRef<number>(0);
+
   useEffect(() => {
     if (boundaryDragIndex === null) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - boundaryStartX.current;
-      // Convert pixels to frames (approx 0.7px per frame based on widthScale)
-      const deltaFrames = Math.round(deltaX / 0.7);
+      pendingDelta.current = e.clientX - boundaryStartX.current;
+      if (rafId.current !== null) return;
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+        const deltaFrames = Math.round(pendingDelta.current / 0.7);
+        const newLeftDur = boundaryOrigLeft.current + deltaFrames;
+        const newRightDur = boundaryOrigRight.current - deltaFrames;
+        if (newLeftDur < MIN_FRAGMENT_DURATION || newRightDur < MIN_FRAGMENT_DURATION) return;
 
-      const newLeftDur = boundaryOrigLeft.current + deltaFrames;
-      const newRightDur = boundaryOrigRight.current - deltaFrames;
+        const newFrags = [...fragments];
+        const leftFrag = { ...newFrags[boundaryDragIndex!] };
+        const rightFrag = { ...newFrags[boundaryDragIndex! + 1] };
 
-      if (newLeftDur < MIN_FRAGMENT_DURATION || newRightDur < MIN_FRAGMENT_DURATION) return;
+        leftFrag.duration = newLeftDur;
+        leftFrag.end_frame = leftFrag.start_frame + newLeftDur;
+        rightFrag.duration = newRightDur;
+        rightFrag.start_frame = rightFrag.end_frame - newRightDur;
 
-      const newFrags = [...fragments];
-      const leftFrag = { ...newFrags[boundaryDragIndex!] };
-      const rightFrag = { ...newFrags[boundaryDragIndex! + 1] };
-
-      leftFrag.duration = newLeftDur;
-      leftFrag.end_frame = leftFrag.start_frame + newLeftDur;
-
-      rightFrag.duration = newRightDur;
-      rightFrag.start_frame = rightFrag.end_frame - newRightDur;
-
-      newFrags[boundaryDragIndex!] = leftFrag;
-      newFrags[boundaryDragIndex! + 1] = rightFrag;
-
-      onFragmentsChange(newFrags);
+        newFrags[boundaryDragIndex!] = leftFrag;
+        newFrags[boundaryDragIndex! + 1] = rightFrag;
+        onFragmentsChange(newFrags);
+      });
     };
 
     const handleMouseUp = () => {
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
       setBoundaryDragIndex(null);
       onBoundaryDragChange?.(null, null);
     };
@@ -126,6 +132,10 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
       document.removeEventListener("mouseup", handleMouseUp);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
     };
   }, [boundaryDragIndex, fragments, onFragmentsChange]);
 

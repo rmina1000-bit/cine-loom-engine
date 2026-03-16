@@ -43,16 +43,16 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   // Focus-zoom: compute scale and opacity based on selection state
   const getFocusScale = () => {
     if (isSelected) {
-      if (variant === "edit") return 1.35;
-      if (variant === "panorama") return 1.15;
-      if (variant === "reserved") return 1.12;
-      return 1.3;
+      if (variant === "edit") return 1.08;
+      if (variant === "panorama") return 1.05;
+      if (variant === "reserved") return 1.04;
+      return 1.08;
     }
     if (hasActiveSelection && !isSelected) {
-      if (variant === "edit") return 0.82;
-      if (variant === "panorama") return 0.9;
-      if (variant === "reserved") return 0.95;
-      return 0.85;
+      if (variant === "edit") return 0.94;
+      if (variant === "panorama") return 0.96;
+      if (variant === "reserved") return 0.97;
+      return 0.94;
     }
     return 1;
   };
@@ -137,8 +137,6 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
 
   return (
     <motion.div
-      layout={variant !== "reserved"}
-      layoutId={variant !== "reserved" ? `${variant}-${fragment.fragment_id}` : undefined}
       onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => { setIsHovering(false); }}
@@ -146,11 +144,11 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
         ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
         border`}
       animate={{
-        scale: isHighlighted ? 1.04 : focusScale,
+        scale: isHighlighted ? 1.02 : focusScale,
         opacity: shrunkOpacity,
       }}
-      transition={{ type: "spring", stiffness: 350, damping: 28 }}
-      whileHover={{ scale: variant === "reserved" ? 1 : Math.max(focusScale, 1.03) }}
+      transition={{ type: "tween", duration: 0.15, ease: "easeOut" }}
+      whileHover={{ scale: variant === "reserved" ? 1 : Math.max(focusScale, 1.01) }}
       style={{
         width, height,
         zIndex: isSelected ? 30 : 1,
@@ -237,7 +235,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       {isPlaying && (
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground/10 z-30">
           <div
-            className="h-full bg-primary/70 transition-all"
+            className="h-full bg-primary/70"
             style={{ width: `${playProgress}%` }}
           />
         </div>
