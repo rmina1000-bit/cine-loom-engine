@@ -85,7 +85,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
               className="flex items-stretch"
               style={{ opacity: draggedId === f.fragment_id ? 0.4 : 1 }}
             >
-              <div onDoubleClick={() => onFragmentDoubleClick(f)}>
+              <div>
                 <FragmentTile
                   fragment={f}
                   isSelected={selectedFragmentId === f.fragment_id}
@@ -93,6 +93,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
                   isExpanded={expandedFragmentId === f.fragment_id}
                   hasActiveSelection={!!selectedFragmentId}
                   onClick={() => onFragmentClick(f)}
+                  onDoubleClick={() => onFragmentDoubleClick(f)}
                   widthScale={0.7}
                   variant="edit"
                 />
