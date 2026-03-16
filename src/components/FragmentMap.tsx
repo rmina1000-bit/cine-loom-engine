@@ -10,6 +10,8 @@ interface FragmentMapProps {
   onFragmentClick: (f: Fragment) => void;
   onFragmentDoubleClick: (f: Fragment) => void;
   onExcludeFragment: (f: Fragment) => void;
+  onRestoreFragment: (f: Fragment) => void;
+  onMoveToHold: (f: Fragment) => void;
 }
 
 const MIN_FRAGMENT_DURATION = 15; // minimum frames a fragment can shrink to
