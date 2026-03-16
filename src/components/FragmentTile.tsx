@@ -9,6 +9,7 @@ interface FragmentTileProps {
   isSelected: boolean;
   isHighlighted: boolean;
   isExpanded?: boolean;
+  hasActiveSelection?: boolean;
   onClick: () => void;
   widthScale?: number;
   variant?: "panorama" | "edit" | "reserved";
