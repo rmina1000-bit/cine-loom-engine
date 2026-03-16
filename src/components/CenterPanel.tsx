@@ -70,13 +70,14 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
               <span className="text-sm font-bold text-primary">{selectedFragment.fragment_id}</span>
             </div>
 
-            {/* Fragment thumbnail placeholder */}
-            <div
-              className="w-full h-24 rounded-md border border-border"
-              style={{
-                background: `linear-gradient(135deg, hsl(${selectedFragment.thumbnail_hue} 30% 18%), hsl(${selectedFragment.thumbnail_hue + 30} 25% 12%))`,
-              }}
-            />
+            {/* Fragment thumbnail preview */}
+            <div className="w-full h-24 rounded-md border border-border overflow-hidden">
+              <img
+                src={getFragmentThumbnail(selectedFragment.fragment_id, selectedFragment.source_video, selectedFragment.thumbnail?.thumbnail_url)}
+                alt={selectedFragment.fragment_id}
+                className="w-full h-full object-cover"
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-secondary rounded px-2 py-1.5">
