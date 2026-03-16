@@ -206,6 +206,8 @@ const Index: React.FC = () => {
             onFragmentClick={handleEditFragmentClick}
             onFragmentDoubleClick={handleEditFragmentDoubleClick}
             onExcludeFragment={handleExcludeFromEdit}
+            onRestoreFragment={handleRestoreFragment}
+            onMoveToHold={handleMoveToHold}
           />
         </div>
 
