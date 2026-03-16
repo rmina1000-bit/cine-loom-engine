@@ -14,8 +14,9 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
 
   const sourceInfo = sourceVideos.find((s) => s.id === selectedSource);
 
-  // Total edit structure duration
-  const totalDuration = editSequence.reduce((sum, f) => sum + f.duration, 0);
+  // Total edit structure duration (active fragments only for render)
+  const activeSequence = editSequence.filter(f => !f.excluded);
+  const totalDuration = activeSequence.reduce((sum, f) => sum + f.duration, 0);
 
   return (
     <div className="flex flex-col bg-card/40 h-full w-full">
