@@ -113,10 +113,8 @@ const Index: React.FC = () => {
           : fr
       )
     );
-    if (selectedFragment?.fragment_id === f.fragment_id) {
-      setSelectedFragment(null);
-    }
-  }, [selectedFragment]);
+    // Keep selection so user sees the excluded state
+  }, []);
 
   // Restore excluded fragment back to active render
   const handleRestoreFragment = useCallback((f: Fragment) => {
