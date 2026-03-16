@@ -128,7 +128,7 @@ Index (page root — src/pages/Index.tsx)
 |---------|--------|------------|----------|
 | `"panorama"` | 64px | 0.6 | Click to select, highlight ring, intelligence dots |
 | `"edit"` | 72px | 0.7 | Click/double-click, play, exclude button, focus-zoom |
-| `"reserved"` | 56px | 0.5 | Click to select, no hover scale, no play |
+| `"reserved"` | 56px | 0.5 | Click to select, play allowed, no editing commands, no hover scale |
 
 Width formula: `max(minW, fragment.duration × widthScale)` where `minW` = 60 (panorama), 48 (edit/reserved).
 
@@ -151,35 +151,49 @@ Width formula: `max(minW, fragment.duration × widthScale)` where `minW` = 60 (p
 | `boundaryHighlightIds` | `string[]` | `[]` | Fragment IDs highlighted during boundary drag |
 | `fragmentOverrides` | `Map<string, Fragment>` | `new Map()` | Temporary duration overrides for Panorama during drag |
 | `centerWidth` | `number` | 340 | Persisted splitter position |
+| `undoStack` | `UndoEntry[]` | `[]` | Undo history (see §8) |
+| `redoStack` | `UndoEntry[]` | `[]` | Redo history (see §8) |
 
-### 3.2 Click Interactions
+### 3.2 Click Interactions — Exact Rules
 
 #### Single Click on Fragment (Edit Structure)
-1. If same fragment already selected → deselect all (`selectedFragment = null`, `highlightedPanoramaFrag = null`, `expandedFragment = null`)
-2. If different fragment → select it, set `activeSource` to fragment's source, highlight in Panorama, clear expanded
+1. If same fragment already selected → **deselect all** (`selectedFragment = null`, `highlightedPanoramaFrag = null`, `expandedFragment = null`). This is the "focus-expand toggle."
+2. If different fragment → select it, set `activeSource` to fragment's source, highlight in Panorama, clear expanded.
 
 #### Double Click on Fragment (Edit Structure)
-1. Select the fragment
-2. Switch source tab
-3. Toggle `expandedFragment` (Time Lens mode: fragment width doubles, shows internal frame strip)
+1. Select the fragment.
+2. Switch source tab.
+3. Enter `expandedFragment` (Time Lens mode: fragment width doubles, shows internal frame strip).
+
+#### Clicking Outside (Global Click-to-Dismiss)
+- Clicking any empty space (not `.fragment-tile`, not inside a precision overlay, not on a boundary handle) → deselects all, clears highlights, clears expansion.
+- Implemented on root `div` via `onClick` with `.closest(".fragment-tile")` guard.
+- Does **NOT** fire when the click target is inside an active precision overlay.
 
 #### Single Click on Fragment (Panorama)
-1. Toggle selection only (no source switch, no highlight sync)
+1. Toggle selection only (no source switch, no highlight sync).
 
 #### Single Click on Fragment (Hold Area)
-1. Toggle selection, switch source tab and highlight in Panorama if selecting
+1. Toggle selection, switch source tab and highlight in Panorama if selecting.
 
 #### Click/Double-Click Disambiguation
-- Implemented via 220ms timer in `FragmentTile`
-- First click starts timer; if second click arrives before timeout → double-click
-- If timeout fires → single click
+- Implemented via 220ms timer in `FragmentTile`.
+- First click starts timer; if second click arrives before timeout → double-click.
+- If timeout fires → single click.
+
+#### Play Button Click
+- Play button is an independent click target (top-right of tile on hover).
+- Clicking play does **NOT** trigger fragment selection or deselection.
+- Play does **NOT** interfere with focus-expand state.
+- Play state auto-stops if fragment is deselected via other means.
+- Play is available in **edit** and **reserved** variants. Not in panorama.
 
 ### 3.3 Hover Interactions
 
 | Target | Behavior |
 |--------|----------|
 | `FragmentTile` (edit/panorama) | Sweeping gradient animation (`preview-sweep` keyframe, 1.5s infinite). Play button appears (top-right, 16×16px circle). Subtle scale to `max(focusScale, 1.01)`. |
-| `FragmentTile` (reserved) | No hover scale (scale stays 1) |
+| `FragmentTile` (reserved) | No hover scale (scale stays 1). Play button appears on hover. |
 | `BoundaryHandle` | Color: `hsl(228 5% 22%)` → `hsl(211 55% 58%)`. Width: 3px → 4px. |
 | `SyntheticCollapsedSeam` | Dots turn amber (`--ccut-amber`). Background tints `hsl(var(--ccut-amber) / 0.06)`. Tooltip appears: "{N} hidden". |
 
@@ -194,22 +208,25 @@ When a fragment is selected:
 
 ### 3.5 Play State
 
-- Triggered by clicking play button (visible on hover, top-right of tile)
-- `setInterval` at 50ms, incrementing progress by 2% per tick
-- Visual: colored gradient fill from left + vertical playhead line (`w-0.5 bg-primary`)
-- Bottom progress bar: `h-0.5 bg-primary/70`
-- Auto-stops at 100%, resets to 0
-- Stops when fragment is deselected
+- Triggered by clicking play button (visible on hover, top-right of tile).
+- Available in **edit** and **reserved** variants.
+- `setInterval` at 50ms, incrementing progress by 2% per tick.
+- Visual: colored gradient fill from left + vertical playhead line (`w-0.5 bg-primary`).
+- Bottom progress bar: `h-0.5 bg-primary/70`.
+- Auto-stops at 100%, resets to 0.
+- Stops when fragment is deselected.
 - **Provisional prototype behavior**: No real video playback. Simulated progress only.
 
 ### 3.6 Exclude / Restore
 
 | Action | Trigger | Effect |
 |--------|---------|--------|
-| Exclude from render | Click `EyeOff` button on selected fragment | Sets `fragment.excluded = true`. Fragment disappears from visible board. Appears inside synthetic seams. |
+| Exclude from render | Click `EyeOff` button on selected fragment | Sets `fragment.excluded = true`. Fragment disappears from visible board. Appears inside synthetic seams. Structure preserved. |
 | Restore to render | (Currently not directly exposed on board — only via Hold Area restore or precision overlay) | Sets `fragment.excluded = false`. Fragment reappears on board. |
-| Move to Hold Area | `onMoveToHold` callback (not currently wired to UI button) | Removes from `editFragments`, adds to `reservedFragments` with `excluded = false` |
-| Restore from Hold Area | Click restore button (bottom-right of Hold Area) when fragment selected | Removes from `reservedFragments`, appends to end of `editFragments` |
+| Move to Hold Area | `onMoveToHold` callback | Removes from `editFragments`, adds to `reservedFragments` with `excluded = false`. Fragment is fully detached from the Edit Structure. |
+| Restore from Hold Area | Click restore button (bottom-right of Hold Area) when fragment selected | Removes from `reservedFragments`, appends to end of `editFragments`. |
+
+**Critical distinction**: "Excluded from render" ≠ "Removed from structure." Excluded fragments remain in `editFragments[]` at their structural index. They participate in boundary math and seam detection. They are simply skipped during render output. Moving to Hold Area is a full structural removal.
 
 ### 3.7 Boundary Drag (Normal — Between Directly Adjacent Visible Fragments)
 
@@ -218,13 +235,17 @@ When a fragment is selected:
 3. **mouseup**: Clear drag state. Fire `onBoundaryDragChange(null, null)`.
 4. **Source Recall**: On drag start, `activeSource` switches to the left fragment's source. `boundaryHighlightIds` set to `[left.id, right.id]`. Panorama scrolls to highlighted fragment and shows ring highlight.
 
-### 3.8 Synthetic Collapsed Seam
+### 3.8 Synthetic Collapsed Seam — Philosophy and Rules
+
+**Core philosophy**: A synthetic collapsed seam is **NOT a true boundary**. It is a visual artifact that appears when one or more structurally present but render-excluded fragments sit between two visible fragments. The real boundaries are the internal structural boundaries between each adjacent pair in the chain.
 
 **Detection** (`detectSyntheticSeams`): Scan `fragments[]` left-to-right. Whenever a non-excluded fragment is followed by one or more excluded fragments and then another non-excluded fragment, create a `SyntheticCollapsedSeam`.
 
 **Board Rendering**: The board renders only `visibleFragments` (non-excluded). Between two visible fragments, if a seam exists, render the dotted seam indicator instead of a normal boundary handle. If no seam and fragments are directly adjacent (`realIndex + 1 === nextRealIndex`), render a normal boundary handle.
 
 **Seam Click** → Opens `BoundaryPrecisionOverlay`.
+
+**A seam is never directly draggable.** The user must open the precision overlay to access the real internal boundaries.
 
 ### 3.9 Precision Overlay
 
@@ -238,6 +259,8 @@ When a fragment is selected:
 1. During drag: Only local `displayFragments` state updates (via `localOverrides` Map). The main board does NOT re-render.
 2. On mouseup: Commits final delta via `onBoundaryCommit(leftRealIdx, rightRealIdx, deltaFrames)` — single board mutation.
 3. Source recall fires on drag start (`onSourceRecall`) and clears on mouseup.
+
+**Boundary drag inside overlay**: Operates on **real internal structural boundaries** only. Dragging redistributes frame ownership between two structurally adjacent fragments. Only the explicitly reclaimed frame portion becomes active. All remaining excluded portions stay excluded as residual structure. Excluded fragments do NOT automatically fully return — only the frames moved across a boundary become part of the adjacent fragment.
 
 **Exit conditions**:
 - mouseup after drag → commit + stay open
@@ -254,25 +277,76 @@ When a fragment is selected:
 - Disabled during boundary drag (`boundaryDragIndex !== null`)
 - Operates on full `fragments[]` array (preserves excluded fragment positions)
 
-### 3.11 Hold Area (Freeform Board)
+### 3.11 Hold Area (Freeform Board) — Rules
 
-- Absolute positioning, no grid/snap/auto-layout
-- Default positions: `x: 12 + (index % 5) × 80`, `y: 8 + floor(index / 5) × 68`
-- Custom positions stored in local `positions` state (not persisted)
-- Mouse drag to reposition (not HTML5 drag — manual `mousedown/move/up`)
-- Dragged fragment: `cursor: grabbing`, `z-index: 50`, no CSS transition
-- Restore button: Fixed bottom-right, `RotateCcw` icon, restores selected fragment to edit structure
+- **Playback allowed**: Fragments in the Hold Area can be played (simulated progress bar).
+- **No editing commands**: Boundary drag, exclude/restore, reorder — none of these apply inside the Hold Area.
+- **No magnetic behavior**: No snapping, no grid alignment, no auto-layout.
+- **No auto-alignment**: Fragments stay exactly where dropped.
+- **Overlap allowed**: Multiple fragments may occupy the same visual space.
+- **Keep exact dropped position**: Position is stored as `{x, y}` in local state. No adjustment after drop.
+- Absolute positioning, no grid/snap/auto-layout.
+- Default positions: `x: 12 + (index % 5) × 80`, `y: 8 + floor(index / 5) × 68`.
+- Custom positions stored in local `positions` state (not persisted).
+- Mouse drag to reposition (not HTML5 drag — manual `mousedown/move/up`).
+- Dragged fragment: `cursor: grabbing`, `z-index: 50`, no CSS transition.
+- Restore button: Fixed bottom-right, `RotateCcw` icon, restores selected fragment to edit structure.
+- Fragments in the Hold Area do **NOT** participate in boundary math or seam detection.
 
-### 3.12 Global Click-to-Dismiss
+### 3.12 Commit Preview Rule (Precision Overlay)
 
-- Clicking any empty space (not `.fragment-tile`) on the workspace → deselects all, clears highlights, clears expansion.
-- Implemented on root `div` via `onClick` with `.closest(".fragment-tile")` guard.
+During boundary drag inside the precision overlay:
+- Show live preview of the resulting structural allocation inside the overlay only.
+- The main board remains visually stable — no re-render during drag.
+- Only the local overlay updates continuously at frame precision.
+- On mouse release: commit the final structural change to the main `editFragments` state as a single mutation.
+- Source Recall (Panorama highlight) may update during drag for visual context.
 
 ---
 
-## 4. STYLING TOKENS
+## 4. INTERACTION PRIORITY MATRIX
 
-### 4.1 Colors (HSL Values — `:root` CSS Custom Properties)
+When multiple interaction intents could fire simultaneously, use the following precedence rules.
+
+### 4.1 Click Disambiguation
+
+| Conflict | Resolution |
+|----------|------------|
+| Single click vs. double click | 220ms timer. First click waits; second click within window → double-click fires, single click cancelled. Timeout → single click fires. |
+| Play button click vs. fragment click | Play button has its own click handler with `e.stopPropagation()`. Fragment click does NOT fire. Play state is independent of selection. |
+| Fragment click vs. outside click | `.closest(".fragment-tile")` guard. If click lands on a fragment → fragment click. If not → outside click (dismiss). |
+| Outside click vs. overlay open | If precision overlay is open, clicks inside the overlay are consumed by the overlay. Clicks outside both the overlay and fragments close the overlay first, then dismiss selection. |
+
+### 4.2 Drag Disambiguation
+
+| Conflict | Resolution |
+|----------|------------|
+| Boundary drag vs. reorder drag | Boundary drag activates on `mousedown` on a boundary handle (3–4px zone). Reorder drag activates on `dragstart` on the fragment tile body. These targets do not overlap. If `boundaryDragIndex !== null`, HTML5 drag is disabled (`draggable={false}`). |
+| Synthetic seam click vs. normal boundary click | Seam indicator and boundary handle are mutually exclusive DOM elements. A seam exists only where excluded fragments hide between visible fragments. Where no excluded fragments exist, a normal boundary handle renders instead. Never both. |
+| Hold Area drag vs. select | `mousedown` initiates drag tracking. If `mouseup` occurs without significant movement (< 4px total delta), treat as click (select/deselect). If movement exceeds threshold → reposition only, no selection change. |
+
+### 4.3 Keyboard vs. Mouse
+
+| Conflict | Resolution |
+|----------|------------|
+| Escape during boundary drag | Cancel drag, discard changes, revert to pre-drag state. |
+| Escape during precision overlay | Discard local overrides, close overlay. |
+| Escape with no overlay or drag | Deselect all (same as outside click). |
+
+### 4.4 Priority Stack (highest to lowest)
+
+1. Active boundary drag (mouse captured — all other interactions blocked)
+2. Active precision overlay (captures clicks within, Escape closes)
+3. Hold Area drag (mouse captured within Hold Area)
+4. Fragment click/double-click (220ms disambiguation)
+5. Outside click dismiss
+6. Hover effects (lowest priority, purely visual)
+
+---
+
+## 5. STYLING TOKENS
+
+### 5.1 Colors (HSL Values — `:root` CSS Custom Properties)
 
 | Token | HSL | Usage |
 |-------|-----|-------|
@@ -295,7 +369,7 @@ When a fragment is selected:
 | `--ccut-indigo` | `220 35% 52%` | Intelligence gradient start |
 | `--ccut-stroke` | `228 5% 20%` | Subtle strokes |
 
-### 4.2 Source Video Hue Map
+### 5.2 Source Video Hue Map
 
 Used for per-source tinting (hover sweep, playback gradient):
 
@@ -309,7 +383,7 @@ Used for per-source tinting (hover sweep, playback gradient):
 | F | 50 |
 | G | 320 |
 
-### 4.3 Typography
+### 5.3 Typography
 
 | Usage | Size | Weight | Color | Tracking |
 |-------|------|--------|-------|----------|
@@ -326,7 +400,7 @@ Used for per-source tinting (hover sweep, playback gradient):
 
 **Font family**: `'Inter', system-ui, sans-serif` — loaded via Google Fonts (weights: 300–800).
 
-### 4.4 Spacing
+### 5.4 Spacing
 
 | Context | Value |
 |---------|-------|
@@ -339,7 +413,7 @@ Used for per-source tinting (hover sweep, playback gradient):
 | Precision overlay padding | `p-1.5` (6px) |
 | Precision boundary hit area | 14px |
 
-### 4.5 Border Radius
+### 5.5 Border Radius
 
 | Element | Radius |
 |---------|--------|
@@ -352,7 +426,7 @@ Used for per-source tinting (hover sweep, playback gradient):
 | Scrollbar thumb | 3px |
 | `--radius` base | `0.5rem` (8px) |
 
-### 4.6 Shadows
+### 5.6 Shadows
 
 | Element | Shadow |
 |---------|--------|
@@ -360,7 +434,7 @@ Used for per-source tinting (hover sweep, playback gradient):
 | Precision overlay | `0 6px 24px -6px hsl(var(--background) / 0.6), 0 1px 4px -1px hsl(var(--primary) / 0.06)` |
 | Exclude button | `shadow-sm` (Tailwind default) |
 
-### 4.7 Borders
+### 5.7 Borders
 
 | Context | Style |
 |---------|-------|
@@ -371,7 +445,7 @@ Used for per-source tinting (hover sweep, playback gradient):
 | Precision overlay card | `border border-border/30` |
 | Boundary highlight ring (Panorama) | `ring-1 ring-primary/60` |
 
-### 4.8 Transitions & Animation
+### 5.8 Transitions & Animation
 
 | Interaction | Duration | Easing | Engine |
 |-------------|----------|--------|--------|
@@ -389,9 +463,9 @@ Used for per-source tinting (hover sweep, playback gradient):
 
 ---
 
-## 5. DATA MODEL
+## 6. DATA MODEL
 
-### 5.1 Core Types
+### 6.1 Core Types
 
 ```typescript
 interface Fragment {
@@ -428,7 +502,7 @@ interface SourceVideo {
 }
 ```
 
-### 5.2 Boundary System Types
+### 6.2 Boundary System Types
 
 ```typescript
 interface SyntheticCollapsedSeam {
@@ -455,19 +529,179 @@ interface PrecisionOverlayState {
 }
 ```
 
-### 5.3 Boundary Math Rules
+### 6.3 Undo/Redo Types
+
+```typescript
+type UndoActionType =
+  | "reorder"
+  | "boundary-resize"
+  | "replace-fragment"
+  | "exclude"
+  | "restore"
+  | "move-to-hold"
+  | "restore-from-hold"
+  | "precision-boundary";
+
+interface UndoEntry {
+  type: UndoActionType;
+  timestamp: number;
+  /** Snapshot of editFragments before this action */
+  prevEditFragments: Fragment[];
+  /** Snapshot of reservedFragments before this action */
+  prevReservedFragments: Fragment[];
+  /** Human-readable label for debugging */
+  label: string;
+}
+```
+
+### 6.4 Boundary Math Rules
 
 - Adjacent fragments share boundaries: `fragmentN.end_frame === fragmentN+1.start_frame` (conceptual — not enforced in current data model since fragments may come from different sources)
 - Dragging redistributes: `left.duration += delta`, `right.duration -= delta`
 - Both durations clamped to `≥ MIN_FRAGMENT_DURATION` (15 frames)
 - Excluded fragments participate in boundary math — exclusion only affects render, not structure
 - Frame conversion: `seconds = frames / fps` (default fps = 30)
+- Only explicitly reclaimed frame portions become active — residual excluded portions stay excluded
 
 ---
 
-## 6. IMPLEMENTATION NOTES FOR CODEX
+## 7. BOUNDARY PHILOSOPHY
 
-### 6.1 What Is Real Interactive State (Must Implement Fully)
+This section codifies the structural rules that underpin all boundary and fragment editing.
+
+### 7.1 Excluded ≠ Removed
+
+- A fragment with `excluded = true` remains in `editFragments[]` at its structural index.
+- It participates in synthetic seam detection, boundary math, and chain resolution.
+- It is simply omitted from the rendered output.
+- Moving to Hold Area is a true structural removal — the fragment leaves `editFragments[]` entirely.
+
+### 7.2 Synthetic Collapsed Seam ≠ True Boundary
+
+- A seam is a visual indicator, not a draggable boundary.
+- It appears only where one or more excluded fragments sit between two visible fragments.
+- The seam cannot be directly dragged. Clicking it opens the precision overlay.
+- Inside the precision overlay, the user accesses the **real internal structural boundaries**.
+
+### 7.3 Frame Reclamation Rule
+
+When dragging a real internal boundary inside the precision overlay:
+- Frame ownership is redistributed between two structurally adjacent fragments.
+- If the drag moves frames from an excluded fragment into a visible fragment, only those specific frames are reclaimed.
+- The excluded fragment does **NOT** automatically become fully visible.
+- The remaining frame range of the excluded fragment stays excluded as residual structure.
+- If an excluded fragment is reduced to `0` frames (`duration ≤ 0`), it is removed from the structure entirely.
+
+### 7.4 Boundary Drag Scope
+
+- Normal boundary drag (between two directly adjacent visible fragments): operates on `editFragments[]` directly, mutates on every RAF tick.
+- Precision overlay boundary drag (between chain members including excluded): operates on local overlay state, commits once on mouseup.
+- Hold Area: no boundary drag exists. Fragments are independent.
+
+---
+
+## 8. UNDO / REDO SPECIFICATION
+
+### 8.1 Architecture
+
+- Two stacks: `undoStack: UndoEntry[]` and `redoStack: UndoEntry[]`.
+- Before any mutating action, push a snapshot of `{editFragments, reservedFragments}` to `undoStack` and clear `redoStack`.
+- Undo: pop from `undoStack`, push current state to `redoStack`, restore popped state.
+- Redo: pop from `redoStack`, push current state to `undoStack`, restore popped state.
+- Maximum stack depth: 50 entries (drop oldest on overflow).
+
+### 8.2 Covered Actions
+
+| Action | When to snapshot |
+|--------|-----------------|
+| Reorder (drag-and-drop) | On `onDrop` — before applying new order |
+| Boundary resize (normal) | On `mouseup` — before committing final delta |
+| Replace fragment | Before replacing fragment data |
+| Exclude fragment | Before setting `excluded = true` |
+| Restore fragment | Before setting `excluded = false` |
+| Move to Hold Area | Before transferring between arrays |
+| Restore from Hold Area | Before transferring between arrays |
+| Precision overlay boundary edit | On overlay commit (`mouseup`) — before applying to `editFragments` |
+
+### 8.3 Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + Z` | Undo |
+| `Cmd/Ctrl + Shift + Z` | Redo |
+
+### 8.4 Edge Cases
+
+- If `undoStack` is empty, undo is a no-op.
+- If `redoStack` is empty, redo is a no-op.
+- Any new mutating action clears `redoStack` (standard undo tree behavior).
+- Undo/redo restores both `editFragments` and `reservedFragments` atomically.
+
+---
+
+## 9. ACCESSIBILITY SPECIFICATION
+
+### 9.1 Keyboard Navigation
+
+| Key | Context | Action |
+|-----|---------|--------|
+| `Tab` | Global | Move focus through focusable elements in DOM order: nav items → center panel → source tabs → panorama fragments → edit fragments → boundary handles → hold area fragments |
+| `Shift+Tab` | Global | Reverse tab order |
+| `Enter` / `Space` | Focused fragment | Equivalent to single click (select/deselect toggle) |
+| `Enter` (double press within 220ms) | Focused fragment | Equivalent to double click (Time Lens) |
+| `Arrow Left` / `Arrow Right` | Fragment Map with a selected fragment | Move selection to previous/next visible fragment |
+| `Arrow Left` / `Arrow Right` | Focused boundary handle | Nudge boundary by 1 frame in that direction |
+| `Shift + Arrow Left/Right` | Focused boundary handle | Nudge boundary by 5 frames |
+| `Escape` | Precision overlay open | Close overlay, discard uncommitted changes |
+| `Escape` | No overlay, fragment selected | Deselect all |
+| `Escape` | During boundary drag | Cancel drag, revert to pre-drag state |
+| `Delete` / `Backspace` | Selected fragment in Edit Structure | Exclude from render (`excluded = true`) |
+| `Cmd/Ctrl + Z` | Global | Undo |
+| `Cmd/Ctrl + Shift + Z` | Global | Redo |
+
+### 9.2 Focus Indicators
+
+- All interactive elements must have a visible focus ring: `ring-2 ring-ring ring-offset-2 ring-offset-background`.
+- Focus ring uses `--ring` token (`211 55% 58%`).
+- Focus ring only visible on keyboard navigation (`:focus-visible`), not on mouse click.
+
+### 9.3 ARIA Attributes
+
+| Element | ARIA |
+|---------|------|
+| Fragment tile | `role="button"`, `aria-label="{fragment_id} — {duration} frames from source {source}"`, `aria-selected={isSelected}`, `aria-expanded={isExpanded}` (Time Lens) |
+| Boundary handle | `role="separator"`, `aria-orientation="vertical"`, `aria-label="Boundary between {leftId} and {rightId}"`, `aria-valuenow={leftDuration}`, `aria-valuemin={MIN_FRAGMENT_DURATION}`, `aria-valuemax={leftDuration + rightDuration - MIN_FRAGMENT_DURATION}` |
+| Synthetic seam | `role="button"`, `aria-label="Collapsed seam: {N} hidden fragments between {leftId} and {rightId}"`, `aria-haspopup="dialog"` |
+| Precision overlay | `role="dialog"`, `aria-label="Precision boundary editor"`, `aria-modal="false"` (non-modal, board stays visible) |
+| Hold Area | `role="region"`, `aria-label="Hold Area — {N} fragments"` |
+| Fragment Map | `role="region"`, `aria-label="Edit Structure — {N} visible fragments"` |
+| Original Panorama | `role="region"`, `aria-label="Source {activeSource} panorama"` |
+| Source tabs | `role="tablist"`, each tab: `role="tab"`, `aria-selected` |
+| Splitter | `role="separator"`, `aria-orientation="vertical"`, `aria-valuenow={centerWidth}`, `aria-valuemin={260}`, `aria-valuemax={maxWidth}` |
+| Nav buttons | `role="button"`, `aria-label="{label}"`, `aria-current="page"` if active |
+| Play button | `aria-label="Play {fragment_id}"` / `aria-label="Pause {fragment_id}"` |
+| Exclude button | `aria-label="Exclude {fragment_id} from render"` |
+| Restore button (Hold Area) | `aria-label="Restore selected fragment to Edit Structure"` |
+
+### 9.4 Screen Reader Announcements
+
+- On fragment select: announce `"{fragment_id} selected"` via `aria-live="polite"` region.
+- On boundary drag commit: announce `"{leftId} now {leftDuration} frames, {rightId} now {rightDuration} frames"`.
+- On exclude: announce `"{fragment_id} excluded from render"`.
+- On restore: announce `"{fragment_id} restored to render"`.
+- On precision overlay open: announce `"Precision editor opened: {N} fragments in chain"`.
+- On precision overlay close: announce `"Precision editor closed"`.
+
+### 9.5 Reduced Motion
+
+- Respect `prefers-reduced-motion: reduce` media query.
+- When active: disable `preview-sweep` animation, set all framer-motion transitions to `duration: 0`, disable focus-zoom scale animations (keep opacity changes only).
+
+---
+
+## 10. IMPLEMENTATION NOTES FOR CODEX
+
+### 10.1 What Is Real Interactive State (Must Implement Fully)
 
 | Feature | Notes |
 |---------|-------|
@@ -479,13 +713,15 @@ interface PrecisionOverlayState {
 | Exclude/restore fragment | Toggle `excluded` boolean on fragment in edit structure |
 | Move to / restore from Hold Area | Transfer between `editFragments` and `reservedFragments` |
 | Drag-to-reorder fragments | HTML5 DnD on the full `fragments[]` array |
-| Hold Area freeform positioning | Absolute position drag (not HTML5 DnD) |
+| Hold Area freeform positioning | Absolute position drag (not HTML5 DnD), play allowed, no editing |
 | Splitter resize with persistence | `localStorage` persistence, min/max constraints |
 | Focus-zoom (scale + opacity) | When any fragment is selected, all siblings scale/fade |
 | Global click-to-dismiss | Background click clears all selection/expansion |
 | Click/double-click disambiguation | 220ms timer-based separation |
+| Undo/redo | Full snapshot stack for all mutating operations |
+| Keyboard navigation | Tab order, arrow key selection, Escape handling |
 
-### 6.2 What Is Visual Only (Render But Not Functional)
+### 10.2 What Is Visual Only (Render But Not Functional)
 
 | Feature | Notes |
 |---------|-------|
@@ -499,7 +735,7 @@ interface PrecisionOverlayState {
 | Time Lens (double-click expansion) | Shows placeholder colored blocks. No real sub-frame data. |
 | Left nav items | Clickable but only change `activeNavItem` string. No routing. |
 
-### 6.3 What Is Provisional Prototype Behavior (Replace in Production)
+### 10.3 What Is Provisional Prototype Behavior (Replace in Production)
 
 | Feature | Prototype | Production |
 |---------|-----------|------------|
@@ -512,7 +748,7 @@ interface PrecisionOverlayState {
 | Edit structure | In-memory `useState` | Persist to backend, undo/redo stack |
 | Boundary drag sensitivity | `0.7px per frame` (normal), `1.2px per frame` (precision) | Configurable, zoom-dependent |
 
-### 6.4 Thumbnail Service (Ready for Production)
+### 10.4 Thumbnail Service (Ready for Production)
 
 `src/services/thumbnailService.ts` is fully implemented and production-ready:
 - Canvas-based frame extraction from `<video>` elements
@@ -522,7 +758,7 @@ interface PrecisionOverlayState {
 - Boundary change detection for regeneration triggers
 - Batch extraction for full source videos
 
-### 6.5 Performance Considerations
+### 10.5 Performance Considerations
 
 | Area | Approach |
 |------|----------|
@@ -534,7 +770,7 @@ interface PrecisionOverlayState {
 | Fragment tile renders | framer-motion `animate` prop (not `layout`) — avoids layout thrashing |
 | Scrollbar styling | Pure CSS (`::-webkit-scrollbar`), no JS scroll listeners |
 
-### 6.6 Z-Index Stack
+### 10.6 Z-Index Stack
 
 | Layer | z-index |
 |-------|---------|
@@ -545,7 +781,7 @@ interface PrecisionOverlayState {
 | Precision overlay | 100 (fixed position) |
 | Left nav tooltips | 50 |
 
-### 6.7 Dependencies
+### 10.7 Dependencies
 
 | Package | Usage |
 |---------|-------|
@@ -555,7 +791,7 @@ interface PrecisionOverlayState {
 | `tailwindcss` + `tailwindcss-animate` | Styling |
 | `@radix-ui/*` | shadcn/ui primitives (tooltip, popover, hover-card — available but minimally used) |
 
-### 6.8 File Structure Summary
+### 10.8 File Structure Summary
 
 ```
 src/
