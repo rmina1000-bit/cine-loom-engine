@@ -17,9 +17,9 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
   onDeleteFragment,
 }) => {
   return (
-    <div className="flex flex-col bg-card rounded-lg border border-border overflow-hidden relative">
+    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden relative">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold text-foreground tracking-wide">Reserved Fragments</h3>
           <span className="text-[10px] text-muted-foreground">({fragments.length})</span>
