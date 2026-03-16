@@ -110,7 +110,10 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
       onFragmentsChange(newFrags);
     };
 
-    const handleMouseUp = () => setBoundaryDragIndex(null);
+    const handleMouseUp = () => {
+      setBoundaryDragIndex(null);
+      onBoundaryDragChange?.(null, null);
+    };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
