@@ -143,7 +143,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
       </div>
 
       {/* Chat bar */}
-      <div className="px-3 py-2 border-t border-border">
+      <div className="px-3 py-2">
         <div className="flex items-center gap-2 bg-secondary rounded-lg px-2 py-1.5">
           <button className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex-shrink-0">
             <Plus size={16} />

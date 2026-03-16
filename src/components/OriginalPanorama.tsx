@@ -94,7 +94,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
               />
             </div>
             {i < fragments.length - 1 && (
-              <div className="w-px h-10 bg-border flex-shrink-0 mx-0.5" />
+              <div className="w-px h-8 bg-border/30 flex-shrink-0 mx-0.5" />
             )}
           </React.Fragment>
         ))}

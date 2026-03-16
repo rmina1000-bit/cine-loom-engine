@@ -52,7 +52,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       <div
         className="absolute inset-0"
         style={{
-          background: `linear-gradient(135deg, hsl(${hue} 25% 18%), hsl(${(hue + 30) % 360} 20% 12%))`,
+          background: `linear-gradient(145deg, hsl(${hue} 18% 20%), hsl(${(hue + 25) % 360} 14% 15%))`,
         }}
       />
 

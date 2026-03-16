@@ -16,7 +16,7 @@ const navItems = [
 
 const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
   return (
-    <div className="w-16 flex flex-col items-center bg-card border-r border-border h-full py-4 flex-shrink-0">
+    <div className="w-14 flex flex-col items-center bg-card/50 h-full py-4 flex-shrink-0">
       {/* Logo */}
       <div className="mb-8">
         <span className="text-primary font-medium text-sm tracking-widest">CC</span>
