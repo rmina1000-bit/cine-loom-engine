@@ -19,8 +19,8 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
     <div className="w-16 flex flex-col items-center bg-card border-r border-border h-full py-4 flex-shrink-0">
       {/* Logo */}
       <div className="mb-8">
-        <span className="text-primary font-bold text-lg tracking-wider">CC</span>
-        <span className="text-foreground font-bold text-lg tracking-wider">UT</span>
+        <span className="text-primary font-medium text-sm tracking-widest">CC</span>
+        <span className="text-foreground/70 font-medium text-sm tracking-widest">UT</span>
       </div>
 
       {/* Nav items */}
