@@ -146,6 +146,28 @@ const Index: React.FC = () => {
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
+  // Boundary drag: source recall + override sync
+  const handleBoundaryDragChange = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
+    if (!leftFrag || !rightFrag) {
+      setBoundaryHighlightIds([]);
+      setFragmentOverrides(new Map());
+      return;
+    }
+    setActiveSource(leftFrag.source_video);
+    setBoundaryHighlightIds([leftFrag.fragment_id, rightFrag.fragment_id]);
+  }, []);
+
+  // Keep overrides in sync with editFragments during boundary drag
+  useEffect(() => {
+    if (boundaryHighlightIds.length === 0) return;
+    const overrides = new Map<string, Fragment>();
+    for (const fid of boundaryHighlightIds) {
+      const frag = editFragments.find((f) => f.fragment_id === fid);
+      if (frag) overrides.set(fid, frag);
+    }
+    setFragmentOverrides(overrides);
+  }, [editFragments, boundaryHighlightIds]);
+
   // Global click-to-dismiss: clicking empty space restores default state
   const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
     // Only dismiss if clicking directly on a background container, not a fragment
