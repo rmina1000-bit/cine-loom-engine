@@ -673,6 +673,8 @@ interface UndoEntry {
   prevEditFragments: Fragment[];
   /** Snapshot of reservedFragments before this action */
   prevReservedFragments: Fragment[];
+  /** Snapshot of Hold Area positions before this action */
+  prevHoldAreaPositions: Record<string, { x: number; y: number }>;
   /** Human-readable label for debugging */
   label: string;
 }
