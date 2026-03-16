@@ -1,10 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import LeftNav from "@/components/LeftNav";
 import CenterPanel from "@/components/CenterPanel";
 import OriginalPanorama from "@/components/OriginalPanorama";
 import FragmentMap from "@/components/FragmentMap";
 import ReservedFragments from "@/components/ReservedFragments";
 import { Fragment, initialEditFragments, initialReservedFragments } from "@/data/fragmentData";
+
+const STORAGE_KEY = "ccut-center-width";
+const MIN_CENTER = 260;
+const MIN_RIGHT = 400;
+const DEFAULT_CENTER = 340;
 
 const Index: React.FC = () => {
   const [activeNavItem, setActiveNavItem] = useState("projects");
@@ -16,35 +21,72 @@ const Index: React.FC = () => {
   const [editFragments, setEditFragments] = useState<Fragment[]>(initialEditFragments);
   const [reservedFragments, setReservedFragments] = useState<Fragment[]>(initialReservedFragments);
 
-  // Source Recall: when clicking an edit fragment, recall its source
+  // Splitter state
+  const [centerWidth, setCenterWidth] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? Math.max(MIN_CENTER, Number(saved)) : DEFAULT_CENTER;
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const leftNavWidth = 56; // w-14 = 3.5rem = 56px
+
+  // Persist width
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, String(centerWidth));
+  }, [centerWidth]);
+
+  // Global mouse handlers for smooth dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const totalWidth = containerRect.width;
+      const relativeX = e.clientX - containerRect.left - leftNavWidth;
+      const maxCenter = totalWidth - leftNavWidth - MIN_RIGHT;
+      const clamped = Math.max(MIN_CENTER, Math.min(maxCenter, relativeX));
+      setCenterWidth(clamped);
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging]);
+
+  // Source Recall
   const handleEditFragmentClick = useCallback((f: Fragment) => {
     setSelectedFragment(f);
-    // Source recall system
     setActiveSource(f.source_video);
     setHighlightedPanoramaFrag(f.fragment_id);
-    // Clear expansion if clicking different fragment
     if (expandedFragment === f.fragment_id) {
       setExpandedFragment(null);
     }
   }, [expandedFragment]);
 
-  // Time Lens: double-click to expand
   const handleEditFragmentDoubleClick = useCallback((f: Fragment) => {
     setExpandedFragment((prev) => (prev === f.fragment_id ? null : f.fragment_id));
   }, []);
 
-  // Panorama fragment click
   const handlePanoramaFragmentClick = useCallback((f: Fragment) => {
     setSelectedFragment(f);
   }, []);
 
-  // Remove from edit → move to reserved
   const handleRemoveFromEdit = useCallback((f: Fragment) => {
     setEditFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setReservedFragments((prev) => [...prev, f]);
   }, []);
 
-  // Delete from reserved (just removes pointer)
   const handleDeleteReserved = useCallback((f: Fragment) => {
     setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
   }, []);
@@ -56,16 +98,36 @@ const Index: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div ref={containerRef} className="flex h-screen w-full overflow-hidden bg-background">
       {/* Left Navigation */}
       <LeftNav activeItem={activeNavItem} onItemClick={setActiveNavItem} />
 
-      {/* Center Panel */}
-      <CenterPanel selectedFragment={selectedFragment} selectedSource={activeSource} />
+      {/* Center Panel - resizable */}
+      <div style={{ width: centerWidth, flexShrink: 0 }}>
+        <CenterPanel selectedFragment={selectedFragment} selectedSource={activeSource} />
+      </div>
 
-      {/* Right Workspace */}
-      <div className="flex-1 flex flex-col gap-2 p-2 overflow-hidden">
-        {/* A: Original Panorama */}
+      {/* Vertical Splitter */}
+      <div
+        className={`flex-shrink-0 flex items-center justify-center cursor-col-resize group transition-colors
+          ${isDragging ? "bg-primary/15" : "hover:bg-primary/8"}`}
+        style={{ width: 6 }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+      >
+        <div
+          className={`w-[2px] h-10 rounded-full transition-all duration-150
+            ${isDragging
+              ? "bg-primary/60 h-16"
+              : "bg-border/40 group-hover:bg-primary/40 group-hover:h-14"
+            }`}
+        />
+      </div>
+
+      {/* Right Workspace - fills remaining */}
+      <div className="flex-1 flex flex-col gap-2 p-2 overflow-hidden min-w-0">
         <OriginalPanorama
           activeSource={activeSource}
           onSourceChange={setActiveSource}
@@ -76,7 +138,6 @@ const Index: React.FC = () => {
           onToggleIntelligence={() => setIntelligenceOn((p) => !p)}
         />
 
-        {/* B: Fragment Map */}
         <div className="flex-1 overflow-y-auto">
           <FragmentMap
             fragments={editFragments}
@@ -89,7 +150,6 @@ const Index: React.FC = () => {
           />
         </div>
 
-        {/* C: Reserved Fragments */}
         <ReservedFragments
           fragments={reservedFragments}
           selectedFragmentId={selectedFragment?.fragment_id || null}
