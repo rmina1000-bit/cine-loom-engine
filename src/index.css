@@ -108,6 +108,12 @@
   display: inline-block;
 }
 
+/* Preview sweep animation for fragment playback */
+@keyframes preview-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
 /* Panorama scroll */
 .panorama-scroll {
   scroll-behavior: smooth;
