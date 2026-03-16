@@ -104,10 +104,35 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
-  // Exclude from edit structure → move to Hold Area (not deletion)
+  // Exclude from edit structure: toggle excluded flag (structurally preserved for boundaries)
   const handleExcludeFromEdit = useCallback((f: Fragment) => {
+    setEditFragments((prev) =>
+      prev.map((fr) =>
+        fr.fragment_id === f.fragment_id
+          ? { ...fr, excluded: true }
+          : fr
+      )
+    );
+    if (selectedFragment?.fragment_id === f.fragment_id) {
+      setSelectedFragment(null);
+    }
+  }, [selectedFragment]);
+
+  // Restore excluded fragment back to active render
+  const handleRestoreFragment = useCallback((f: Fragment) => {
+    setEditFragments((prev) =>
+      prev.map((fr) =>
+        fr.fragment_id === f.fragment_id
+          ? { ...fr, excluded: false }
+          : fr
+      )
+    );
+  }, []);
+
+  // Move to Hold Area (fully remove from edit structure to reserved)
+  const handleMoveToHold = useCallback((f: Fragment) => {
     setEditFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
-    setReservedFragments((prev) => [...prev, f]);
+    setReservedFragments((prev) => [...prev, { ...f, excluded: false }]);
     if (selectedFragment?.fragment_id === f.fragment_id) {
       setSelectedFragment(null);
     }
