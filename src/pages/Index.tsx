@@ -119,8 +119,18 @@ const Index: React.FC = () => {
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
+  // Global click-to-dismiss: clicking empty space restores default state
+  const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
+    // Only dismiss if clicking directly on a background container, not a fragment
+    const target = e.target as HTMLElement;
+    if (target.closest(".fragment-tile")) return;
+    setSelectedFragment(null);
+    setHighlightedPanoramaFrag(null);
+    setExpandedFragment(null);
+  }, []);
+
   return (
-    <div ref={containerRef} className="flex h-screen w-full overflow-hidden bg-background">
+    <div ref={containerRef} className="flex h-screen w-full overflow-hidden bg-background" onClick={handleBackgroundClick}>
       <LeftNav activeItem={activeNavItem} onItemClick={setActiveNavItem} />
 
       <div style={{ width: centerWidth, flexShrink: 0 }}>

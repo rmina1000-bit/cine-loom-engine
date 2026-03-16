@@ -66,6 +66,18 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   const playInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Stop playback when fragment is deselected
+  useEffect(() => {
+    if (!isSelected && isPlaying) {
+      setIsPlaying(false);
+      setPlayProgress(0);
+      if (playInterval.current) {
+        clearInterval(playInterval.current);
+        playInterval.current = null;
+      }
+    }
+  }, [isSelected, isPlaying]);
+
   // Separated single-click / double-click handler
   const handleClick = (e: React.MouseEvent) => {
     if (clickTimer.current) {
