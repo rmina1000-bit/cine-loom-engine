@@ -11,6 +11,7 @@ interface FragmentTileProps {
   isExpanded?: boolean;
   hasActiveSelection?: boolean;
   onClick: () => void;
+  onDoubleClick?: () => void;
   widthScale?: number;
   variant?: "panorama" | "edit" | "reserved";
   showIntelligence?: boolean;
@@ -27,6 +28,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   isExpanded = false,
   hasActiveSelection = false,
   onClick,
+  onDoubleClick,
   widthScale = 1,
   variant = "edit",
   showIntelligence = false,
@@ -62,6 +64,28 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
   const playInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Separated single-click / double-click handler
+  const handleClick = (e: React.MouseEvent) => {
+    if (clickTimer.current) {
+      // Double click detected
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      onDoubleClick?.();
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        onClick();
+      }, 220);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clickTimer.current) clearTimeout(clickTimer.current);
+    };
+  }, []);
 
   // Hover preview: animate a gradient sweep to simulate playback
   useEffect(() => {
@@ -103,7 +127,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
     <motion.div
       layout={variant !== "reserved"}
       layoutId={variant !== "reserved" ? `${variant}-${fragment.fragment_id}` : undefined}
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => { setIsHovering(false); }}
       className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
