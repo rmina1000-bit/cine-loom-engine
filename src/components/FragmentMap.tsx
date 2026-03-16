@@ -144,10 +144,6 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
           <span className="text-[10px] text-muted-foreground">
             ({activeFragments.length} active{excludedCount > 0 ? ` · ${excludedCount} excluded` : ""})
           </span>
-          <span className="text-[10px] text-muted-foreground/60">·</span>
-          <span className="text-[10px] text-muted-foreground/60">
-            {activeFragments.map(f => f.fragment_id).join(" → ")}
-          </span>
         </div>
         <span className="text-[10px] text-muted-foreground">
           Drag boundaries to redistribute · Drag fragments to reorder

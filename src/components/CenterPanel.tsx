@@ -25,43 +25,6 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
         <h2 className="text-sm font-semibold text-foreground tracking-wide">Structure Analysis</h2>
       </div>
 
-      {/* Edit Structure sequence summary */}
-      {activeSequence.length > 0 && (
-        <div className="px-3 py-2 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Render Sequence
-            </span>
-            <span className="text-[10px] text-muted-foreground">
-              {activeSequence.length} fragments · {formatDuration(totalDuration)}
-            </span>
-          </div>
-          {/* Sequence minimap */}
-          <div className="flex items-center gap-0 h-5 rounded overflow-hidden">
-            {activeSequence.map((f) => (
-              <div
-                key={f.fragment_id}
-                className={`h-full overflow-hidden relative flex-shrink-0 ${
-                  selectedFragment?.fragment_id === f.fragment_id ? "ring-1 ring-primary" : ""
-                }`}
-                style={{ width: Math.max(8, (f.duration / totalDuration) * 100) + "%" }}
-                title={`${f.fragment_id} · ${formatDuration(f.duration)}`}
-              >
-                <img
-                  src={getFragmentThumbnail(f.fragment_id, f.source_video, f.thumbnail?.thumbnail_url)}
-                  alt={f.fragment_id}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-          {/* Sequence text */}
-          <p className="text-[9px] text-muted-foreground/60 leading-tight truncate">
-            {activeSequence.map(f => f.fragment_id).join(" → ")}
-          </p>
-        </div>
-      )}
-
       {/* Divider */}
       <div className="mx-3 h-px bg-border/30" />
 
