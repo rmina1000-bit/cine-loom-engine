@@ -20,7 +20,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
       </div>
 
       {/* Source summary cards */}
-      <div className="px-3 py-2 border-b border-border">
+      <div className="px-3 py-2">
         <div className="flex flex-wrap gap-1.5">
           {sourceVideos.slice(0, 7).map((sv) => (
             <div
