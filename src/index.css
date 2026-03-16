@@ -116,7 +116,7 @@
 /* Boundary handle */
 .boundary-handle {
   width: 2px;
-  background: hsl(225 6% 20%);
+  background: hsl(228 5% 20%);
   cursor: col-resize;
   transition: background 0.15s;
   flex-shrink: 0;
