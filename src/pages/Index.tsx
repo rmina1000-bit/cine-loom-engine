@@ -107,6 +107,15 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
+  const handleRemoveFromEdit = useCallback((f: Fragment) => {
+    setEditFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+    setReservedFragments((prev) => [...prev, f]);
+  }, []);
+
+  const handleDeleteReserved = useCallback((f: Fragment) => {
+    setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+  }, []);
+
   return (
     <div ref={containerRef} className="flex h-screen w-full overflow-hidden bg-background">
       {/* Left Navigation */}
