@@ -761,7 +761,8 @@ When dragging a real internal boundary inside the precision overlay:
 - If `undoStack` is empty, undo is a no-op.
 - If `redoStack` is empty, redo is a no-op.
 - Any new mutating action clears `redoStack` (standard undo tree behavior).
-- Undo/redo restores both `editFragments` and `reservedFragments` atomically.
+- Undo/redo restores `editFragments`, `reservedFragments`, and `holdAreaPositions` atomically.
+- Hold Area repositioning (drag with ≥ 4px movement) is an undoable action.
 
 ---
 
