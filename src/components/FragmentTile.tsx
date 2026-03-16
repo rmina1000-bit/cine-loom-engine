@@ -127,7 +127,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
     <motion.div
       layout={variant !== "reserved"}
       layoutId={variant !== "reserved" ? `${variant}-${fragment.fragment_id}` : undefined}
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => { setIsHovering(false); }}
       className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
