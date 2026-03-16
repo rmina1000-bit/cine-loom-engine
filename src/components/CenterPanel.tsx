@@ -13,9 +13,9 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
   const sourceInfo = sourceVideos.find((s) => s.id === selectedSource);
 
   return (
-    <div className="w-[340px] flex flex-col bg-card border-r border-border h-full flex-shrink-0">
+    <div className="w-[340px] flex flex-col bg-card/40 h-full flex-shrink-0">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border">
+      <div className="px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground tracking-wide">Source Analysis</h2>
       </div>
 
