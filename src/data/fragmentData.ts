@@ -1,10 +1,18 @@
+export interface FragmentThumbnailMeta {
+  thumbnail_url?: string;        // blob URL or remote URL for real thumbnail
+  thumbnail_time?: number;       // extraction time in seconds
+  extraction_version?: number;
+  last_updated?: number;
+}
+
 export interface Fragment {
   fragment_id: string;
   source_video: string;
   start_frame: number;
   end_frame: number;
   duration: number;
-  thumbnail_hue: number; // hue for generated thumbnail color
+  thumbnail_hue: number; // hue for generated/fallback thumbnail color
+  thumbnail?: FragmentThumbnailMeta; // real thumbnail data when available
   intelligence?: {
     narrative: number;    // 0-1
     emotional: number;
