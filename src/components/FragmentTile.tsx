@@ -109,12 +109,16 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
         ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
         border`}
-      style={{ width, height }}
       animate={{
-        scale: isHighlighted ? 1.04 : 1,
+        scale: isHighlighted ? 1.04 : focusScale,
+        opacity: shrunkOpacity,
       }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      whileHover={{ scale: variant === "reserved" ? 1 : 1.03 }}
+      transition={{ type: "spring", stiffness: 350, damping: 28 }}
+      whileHover={{ scale: variant === "reserved" ? 1 : Math.max(focusScale, 1.03) }}
+      style={{
+        width, height,
+        zIndex: isSelected ? 30 : 1,
+      }}
     >
       {/* Fragment thumbnail image */}
       <img
