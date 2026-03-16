@@ -21,6 +21,10 @@ const Index: React.FC = () => {
   const [editFragments, setEditFragments] = useState<Fragment[]>(initialEditFragments);
   const [reservedFragments, setReservedFragments] = useState<Fragment[]>(initialReservedFragments);
 
+  // Boundary drag source-recall state
+  const [boundaryHighlightIds, setBoundaryHighlightIds] = useState<string[]>([]);
+  const [fragmentOverrides, setFragmentOverrides] = useState<Map<string, Fragment>>(new Map());
+
   // Splitter state
   const [centerWidth, setCenterWidth] = useState<number>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
