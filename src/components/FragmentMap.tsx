@@ -172,7 +172,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
               className={`flex items-stretch relative ${f.excluded ? "excluded-fragment" : ""}`}
               style={{ opacity: draggedId === f.fragment_id ? 0.4 : f.excluded ? 0.35 : 1 }}
             >
-              <div className="relative">
+              <div>
                 <FragmentTile
                   fragment={f}
                   isSelected={selectedFragmentId === f.fragment_id}
@@ -184,30 +184,30 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
                   widthScale={0.7}
                   variant="edit"
                 />
-                {/* Excluded overlay indicator */}
-                {f.excluded && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="bg-background/70 rounded px-1.5 py-0.5 text-[8px] text-muted-foreground font-medium tracking-wide uppercase">
-                      excluded
-                    </div>
-                  </div>
-                )}
-                {/* Exclude/Restore toggle button on selected fragment */}
-                {selectedFragmentId === f.fragment_id && (
-                  <button
-                    className="fragment-tile absolute -top-2 -right-2 z-20 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
-                    title={f.excluded ? "Restore to render" : "Exclude from render"}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      f.excluded ? onRestoreFragment(f) : onExcludeFragment(f);
-                    }}
-                  >
-                    {f.excluded ? <Eye size={12} /> : <EyeOff size={12} />}
-                  </button>
-                )}
               </div>
+              {/* Excluded overlay indicator */}
+              {f.excluded && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="bg-background/70 rounded px-1.5 py-0.5 text-[8px] text-muted-foreground font-medium tracking-wide uppercase">
+                    excluded
+                  </div>
+                </div>
+              )}
+              {/* Exclude/Restore toggle button on selected fragment */}
+              {selectedFragmentId === f.fragment_id && (
+                <button
+                  className="fragment-tile absolute -top-2 -right-2 z-30 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                  title={f.excluded ? "Restore to render" : "Exclude from render"}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    f.excluded ? onRestoreFragment(f) : onExcludeFragment(f);
+                  }}
+                >
+                  {f.excluded ? <Eye size={12} /> : <EyeOff size={12} />}
+                </button>
+              )}
               {/* Shared boundary handle - draggable to redistribute duration */}
               {index < fragments.length - 1 && (
                 <div
