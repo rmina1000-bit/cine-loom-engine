@@ -664,7 +664,8 @@ type UndoActionType =
   | "restore"
   | "move-to-hold"
   | "restore-from-hold"
-  | "precision-boundary";
+  | "precision-boundary"
+  | "hold-area-reposition";
 
 interface UndoEntry {
   type: UndoActionType;
