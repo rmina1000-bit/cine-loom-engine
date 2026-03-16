@@ -749,6 +749,7 @@ When dragging a real internal boundary inside the precision overlay:
 | Move to Hold Area | Before transferring between arrays |
 | Restore from Hold Area | Before transferring between arrays |
 | Precision overlay boundary edit | On overlay commit (`mouseup`) — before applying to `editFragments` |
+| Hold Area reposition | On mouseup after ≥ 4px drag — before updating `holdAreaPositions` |
 
 ### 8.3 Keyboard Shortcuts
 
