@@ -235,7 +235,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       {isPlaying && (
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground/10 z-30">
           <div
-            className="h-full bg-primary/70 transition-all"
+            className="h-full bg-primary/70"
             style={{ width: `${playProgress}%` }}
           />
         </div>
