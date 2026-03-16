@@ -131,6 +131,13 @@
   background: hsl(var(--primary)) !important;
   width: 4px !important;
 }
+.boundary-handle-precision {
+  background: hsl(var(--ccut-amber) / 0.5);
+}
+.boundary-handle-precision:hover {
+  background: hsl(var(--ccut-amber));
+  width: 4px;
+}
 
 /* Excluded fragment — structurally present but excluded from render */
 .excluded-fragment {
