@@ -367,8 +367,8 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
           chainFragments={overlayChainFragments}
           chainRealIndices={precisionOverlay.chainRealIndices}
           anchorRect={precisionOverlay.anchorRect}
-          onBoundaryDrag={handleOverlayBoundaryDrag}
-          onDragEnd={handleOverlayDragEnd}
+          onBoundaryCommit={handleOverlayCommit}
+          onSourceRecall={handleOverlaySourceRecall}
           onClose={handleOverlayClose}
         />
       )}
