@@ -92,13 +92,27 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       whileHover={{ scale: variant === "reserved" ? 1 : 1.03 }}
     >
-      {/* Background gradient thumbnail */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(145deg, hsl(${hue} 18% 20%), hsl(${(hue + 25) % 360} 14% 15%))`,
-        }}
-      />
+      {/* Real thumbnail or fallback hue gradient */}
+      {fragment.thumbnail?.thumbnail_url ? (
+        <img
+          src={fragment.thumbnail.thumbnail_url}
+          alt={fragment.fragment_id}
+          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(145deg, hsl(${hue} 18% 20%), hsl(${(hue + 25) % 360} 14% 15%))`,
+          }}
+        />
+      )}
+
+      {/* Readability overlay for text on real thumbnails */}
+      {fragment.thumbnail?.thumbnail_url && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none" />
+      )}
 
       {/* Hover preview animation - sweeping highlight */}
       {isHovering && !isPlaying && (
