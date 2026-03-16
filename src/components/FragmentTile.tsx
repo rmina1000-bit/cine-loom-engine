@@ -28,6 +28,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   isExpanded = false,
   hasActiveSelection = false,
   onClick,
+  onDoubleClick,
   widthScale = 1,
   variant = "edit",
   showIntelligence = false,
