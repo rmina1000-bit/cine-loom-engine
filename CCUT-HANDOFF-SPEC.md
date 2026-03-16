@@ -142,17 +142,141 @@ Width formula: `max(minW, fragment.duration × widthScale)` where `minW` = 60 (p
 |-------|------|---------|---------|
 | `activeNavItem` | `string` | `"projects"` | Left nav selection |
 | `activeSource` | `string` | `"A"` | Which source video tab is active in Panorama |
-| `selectedFragment` | `Fragment \| null` | `null` | Currently selected fragment (any region) |
+| `selectedFragment` | `Fragment \| null` | `null` | Currently focused fragment (any region) |
+| `focusExpandedId` | `string \| null` | `null` | Fragment in focus-expand state (single click) |
+| `timeLensId` | `string \| null` | `null` | Fragment in Time Lens state (double click) |
 | `highlightedPanoramaFrag` | `string \| null` | `null` | Fragment ID highlighted in Panorama |
-| `expandedFragment` | `string \| null` | `null` | Fragment in Time Lens mode |
+| `playingFragmentId` | `string \| null` | `null` | Fragment currently playing (independent of selection) |
 | `intelligenceOn` | `boolean` | `false` | Intelligence overlay visibility |
 | `editFragments` | `Fragment[]` | `initialEditFragments` | Full edit structure (includes excluded) |
 | `reservedFragments` | `Fragment[]` | `initialReservedFragments` | Hold Area fragments |
+| `holdAreaPositions` | `Record<string, {x,y}>` | `{}` | Hold Area fragment positions (included in undo) |
 | `boundaryHighlightIds` | `string[]` | `[]` | Fragment IDs highlighted during boundary drag |
 | `fragmentOverrides` | `Map<string, Fragment>` | `new Map()` | Temporary duration overrides for Panorama during drag |
 | `centerWidth` | `number` | 340 | Persisted splitter position |
 | `undoStack` | `UndoEntry[]` | `[]` | Undo history (see §8) |
 | `redoStack` | `UndoEntry[]` | `[]` | Redo history (see §8) |
+| `precisionOverlay` | `PrecisionOverlayState \| null` | `null` | Active precision overlay (see §3.9) |
+
+### 3.1.1 Fragment Interaction State Machine
+
+The fragment interaction system is a finite state machine. At any moment, exactly one of these states is active:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     FRAGMENT INTERACTION STATES                        │
+├───────────────────────┬─────────────────────────────────────────────────┤
+│ State                 │ Description                                     │
+├───────────────────────┼─────────────────────────────────────────────────┤
+│ IDLE                  │ No fragment selected. Board at rest.            │
+│ FOCUS_EXPANDED        │ Single fragment focused. Neighbors recede.     │
+│ PLAYING               │ Fragment playing (can coexist with FOCUS).     │
+│ TIME_LENS             │ Deep inspection mode. Fragment doubled width.  │
+│ BOUNDARY_DRAGGING     │ Normal boundary drag in progress.              │
+│ SEAM_HOVERED          │ Mouse over synthetic collapsed seam.           │
+│ PRECISION_OVERLAY     │ Precision overlay open, idle inside.           │
+│ PRECISION_DRAGGING    │ Boundary drag inside precision overlay.        │
+│ HOLD_DRAGGING         │ Fragment being repositioned in Hold Area.      │
+└───────────────────────┴─────────────────────────────────────────────────┘
+```
+
+**State Transition Diagram**:
+
+```
+                        ┌──────────────────────────────────────────────────────────────┐
+                        │                                                              │
+                        ▼                                                              │
+                   ┌─────────┐                                                         │
+          ┌───────│  IDLE    │◄──────────────────────────────────────┐                  │
+          │       └────┬─────┘                                      │                  │
+          │            │                                             │                  │
+          │  single    │  double     boundary    seam      hold-area │                  │
+          │  click     │  click     mousedown   hover     mousedown  │                  │
+          │            │                                             │                  │
+          ▼            ▼            ▼            ▼            ▼      │                  │
+   ┌──────────┐  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐│                  │
+   │ FOCUS    │  │ TIME     │ │ BOUNDARY │ │ SEAM     │ │ HOLD     ││                  │
+   │ EXPANDED │  │ LENS     │ │ DRAGGING │ │ HOVERED  │ │ DRAGGING ││                  │
+   └──┬───┬──┘  └──┬───┬──┘ └──┬───────┘ └──┬───┬──┘ └──┬───────┘│                  │
+      │   │        │   │        │             │   │        │        │                  │
+      │   │        │   │        │ mouseup     │   │        │mouseup │                  │
+      │   │        │   │        ├────────────►│   │        ├───────►│                  │
+      │   │        │   │        │             │   │        │        │                  │
+      │   │ same   │   │same    │ Escape      │   │mouseleave      │                  │
+      │   │ click  │   │click   ├────────────►│   ├───────►│        │                  │
+      │   ├───────►│   ├───────►│             │   │        │        │                  │
+      │   │  IDLE  │   │ IDLE   │             │   │        │        │                  │
+      │   │        │   │        │             │   │ seam   │        │                  │
+      │   │outside │   │outside │             │   │ click  │        │                  │
+      │   │click   │   │click   │             │   │        │        │                  │
+      │   ├───────►│   ├───────►│             │   ▼        │        │                  │
+      │   │  IDLE  │   │ IDLE   │      ┌──────────────┐    │        │                  │
+      │   │        │   │        │      │ PRECISION    │    │        │                  │
+      │   │Escape  │   │Escape  │      │ OVERLAY      │    │        │                  │
+      │   ├───────►│   ├───────►│      └──┬───┬───┬──┘    │        │                  │
+      │      IDLE  │      IDLE  │         │   │   │        │        │                  │
+      │            │            │  boundary│   │   │outside │        │                  │
+      │  play btn  │  play btn  │ mousedown│   │   │click   │        │                  │
+      │  click     │  click     │         │   │   ├───────►│        │                  │
+      │            │            │         │   │   │  IDLE  │        │                  │
+      ▼            ▼            │         │   │   │        │        │                  │
+   ┌──────────┐                 │         │   │   │Escape  │        │                  │
+   │ PLAYING  │ (parallel)      │         │   │   ├───────►│        │                  │
+   │          │ coexists with   │         ▼   │      IDLE  │        │                  │
+   │ auto-    │ FOCUS_EXPANDED  │  ┌──────────────┐        │        │                  │
+   │ stops at │ or IDLE         │  │ PRECISION    │        │        │                  │
+   │ 100%     │                 │  │ DRAGGING     │        │        │                  │
+   └──────────┘                 │  └──┬──────────┘        │        │                  │
+                                │     │ mouseup            │        │                  │
+                                │     ├───► PRECISION      │        │                  │
+                                │     │     OVERLAY        │        │                  │
+                                │     │                    │        │                  │
+                                │     │ Escape             │        │                  │
+                                │     ├───────────────────►│        │                  │
+                                │          IDLE            │        │                  │
+                                └──────────────────────────┘────────┘
+```
+
+**Transition table** (definitive reference):
+
+| From | Trigger | To | Side Effects |
+|------|---------|----|-------------|
+| IDLE | single click on fragment | FOCUS_EXPANDED | Set `selectedFragment`, `focusExpandedId`, switch source tab, highlight panorama |
+| IDLE | double click on fragment | TIME_LENS | Set `selectedFragment`, `timeLensId`, switch source tab |
+| IDLE | play button click | PLAYING | Set `playingFragmentId`. No selection change. |
+| IDLE | boundary mousedown | BOUNDARY_DRAGGING | Record start position, fire source recall |
+| IDLE | seam mouseenter | SEAM_HOVERED | Show amber dots, tooltip |
+| IDLE | hold-area mousedown | HOLD_DRAGGING | Record drag offset |
+| FOCUS_EXPANDED | same fragment click | IDLE | Clear `selectedFragment`, `focusExpandedId`, highlights |
+| FOCUS_EXPANDED | different fragment click | FOCUS_EXPANDED | Update `selectedFragment`, `focusExpandedId` to new target |
+| FOCUS_EXPANDED | outside click | IDLE | Clear all selection state |
+| FOCUS_EXPANDED | Escape | IDLE | Clear all selection state |
+| FOCUS_EXPANDED | double click (same) | TIME_LENS | Set `timeLensId`, clear `focusExpandedId` |
+| FOCUS_EXPANDED | play button click | FOCUS_EXPANDED + PLAYING | Start playback (parallel state) |
+| TIME_LENS | same fragment click | IDLE | Clear `timeLensId`, `selectedFragment` |
+| TIME_LENS | different fragment click | FOCUS_EXPANDED | Switch to new fragment's focus-expand |
+| TIME_LENS | outside click | IDLE | Clear all |
+| TIME_LENS | Escape | IDLE | Clear all |
+| TIME_LENS | play button click | TIME_LENS + PLAYING | Start playback (parallel state) |
+| PLAYING | playback reaches 100% | (previous state) | Clear `playingFragmentId`, auto-reset |
+| PLAYING | play button click (pause) | (previous state) | Clear `playingFragmentId` |
+| PLAYING | fragment deselected | IDLE | Stop playback, clear `playingFragmentId` |
+| BOUNDARY_DRAGGING | mousemove | BOUNDARY_DRAGGING | Update durations via RAF, source recall active |
+| BOUNDARY_DRAGGING | mouseup | IDLE | Commit boundary change, clear drag state, push undo |
+| BOUNDARY_DRAGGING | Escape | IDLE | Revert to pre-drag durations, clear drag state |
+| SEAM_HOVERED | mouseleave | IDLE | Remove amber highlight |
+| SEAM_HOVERED | seam click | PRECISION_OVERLAY | Open overlay anchored to seam rect |
+| PRECISION_OVERLAY | boundary mousedown (inside) | PRECISION_DRAGGING | Begin local-state drag |
+| PRECISION_OVERLAY | outside click | IDLE | Close overlay, no commit |
+| PRECISION_OVERLAY | Escape | IDLE | Discard local overrides, close overlay |
+| PRECISION_DRAGGING | mousemove | PRECISION_DRAGGING | Update local `displayFragments` only |
+| PRECISION_DRAGGING | mouseup | PRECISION_OVERLAY | Commit delta to `editFragments`, push undo, stay open |
+| PRECISION_DRAGGING | Escape | IDLE | Discard local overrides, close overlay |
+| HOLD_DRAGGING | mousemove | HOLD_DRAGGING | Update fragment position |
+| HOLD_DRAGGING | mouseup (< 4px movement) | FOCUS_EXPANDED or IDLE | Treat as click: toggle selection |
+| HOLD_DRAGGING | mouseup (≥ 4px movement) | IDLE | Reposition committed, no selection change, push undo for position change |
+
+**Parallel state note**: PLAYING is a parallel state that can coexist with IDLE, FOCUS_EXPANDED, or TIME_LENS. It does not block other transitions. When the parent state transitions to IDLE via outside-click or Escape, PLAYING is also terminated.
 
 ### 3.2 Click Interactions — Exact Rules
 
@@ -540,7 +664,8 @@ type UndoActionType =
   | "restore"
   | "move-to-hold"
   | "restore-from-hold"
-  | "precision-boundary";
+  | "precision-boundary"
+  | "hold-area-reposition";
 
 interface UndoEntry {
   type: UndoActionType;
@@ -549,6 +674,8 @@ interface UndoEntry {
   prevEditFragments: Fragment[];
   /** Snapshot of reservedFragments before this action */
   prevReservedFragments: Fragment[];
+  /** Snapshot of Hold Area positions before this action */
+  prevHoldAreaPositions: Record<string, { x: number; y: number }>;
   /** Human-readable label for debugging */
   label: string;
 }
@@ -605,9 +732,9 @@ When dragging a real internal boundary inside the precision overlay:
 ### 8.1 Architecture
 
 - Two stacks: `undoStack: UndoEntry[]` and `redoStack: UndoEntry[]`.
-- Before any mutating action, push a snapshot of `{editFragments, reservedFragments}` to `undoStack` and clear `redoStack`.
-- Undo: pop from `undoStack`, push current state to `redoStack`, restore popped state.
-- Redo: pop from `redoStack`, push current state to `undoStack`, restore popped state.
+- Before any mutating action, push a snapshot of `{editFragments, reservedFragments, holdAreaPositions}` to `undoStack` and clear `redoStack`.
+- Undo: pop from `undoStack`, push current state to `redoStack`, restore popped state (all three: edit, reserved, positions).
+- Redo: pop from `redoStack`, push current state to `undoStack`, restore popped state (all three).
 - Maximum stack depth: 50 entries (drop oldest on overflow).
 
 ### 8.2 Covered Actions
@@ -622,6 +749,7 @@ When dragging a real internal boundary inside the precision overlay:
 | Move to Hold Area | Before transferring between arrays |
 | Restore from Hold Area | Before transferring between arrays |
 | Precision overlay boundary edit | On overlay commit (`mouseup`) — before applying to `editFragments` |
+| Hold Area reposition | On mouseup after ≥ 4px drag — before updating `holdAreaPositions` |
 
 ### 8.3 Keyboard Shortcuts
 
@@ -635,7 +763,8 @@ When dragging a real internal boundary inside the precision overlay:
 - If `undoStack` is empty, undo is a no-op.
 - If `redoStack` is empty, redo is a no-op.
 - Any new mutating action clears `redoStack` (standard undo tree behavior).
-- Undo/redo restores both `editFragments` and `reservedFragments` atomically.
+- Undo/redo restores `editFragments`, `reservedFragments`, and `holdAreaPositions` atomically.
+- Hold Area repositioning (drag with ≥ 4px movement) is an undoable action.
 
 ---
 
