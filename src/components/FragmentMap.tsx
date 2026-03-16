@@ -13,6 +13,7 @@ interface FragmentMapProps {
   onExcludeFragment: (f: Fragment) => void;
   onRestoreFragment: (f: Fragment) => void;
   onMoveToHold: (f: Fragment) => void;
+  onBoundaryDragChange?: (leftFrag: Fragment | null, rightFrag: Fragment | null) => void;
 }
 
 const MIN_FRAGMENT_DURATION = 15; // minimum frames a fragment can shrink to
@@ -27,6 +28,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   onExcludeFragment,
   onRestoreFragment,
   onMoveToHold,
+  onBoundaryDragChange,
 }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -77,7 +79,8 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     boundaryStartX.current = e.clientX;
     boundaryOrigLeft.current = fragments[index].duration;
     boundaryOrigRight.current = fragments[index + 1].duration;
-  }, [fragments]);
+    onBoundaryDragChange?.(fragments[index], fragments[index + 1]);
+  }, [fragments, onBoundaryDragChange]);
 
   useEffect(() => {
     if (boundaryDragIndex === null) return;
@@ -108,7 +111,10 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
       onFragmentsChange(newFrags);
     };
 
-    const handleMouseUp = () => setBoundaryDragIndex(null);
+    const handleMouseUp = () => {
+      setBoundaryDragIndex(null);
+      onBoundaryDragChange?.(null, null);
+    };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);

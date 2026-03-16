@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import { Fragment, allFragments } from "@/data/fragmentData";
 import FragmentTile from "./FragmentTile";
 import { Eye, EyeOff } from "lucide-react";
@@ -11,6 +11,8 @@ interface OriginalPanoramaProps {
   onFragmentClick: (f: Fragment) => void;
   intelligenceOn: boolean;
   onToggleIntelligence: () => void;
+  fragmentOverrides?: Map<string, Fragment>;
+  boundaryHighlightIds?: string[];
 }
 
 const sources = ["A", "B", "C", "D", "E", "F", "G"];
@@ -23,6 +25,8 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
   onFragmentClick,
   intelligenceOn,
   onToggleIntelligence,
+  fragmentOverrides,
+  boundaryHighlightIds,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +40,32 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
     }
   }, [highlightedFragmentId]);
 
-  const fragments = allFragments[activeSource] || [];
+  // Scroll to boundary-highlighted fragments during drag
+  useEffect(() => {
+    if (boundaryHighlightIds && boundaryHighlightIds.length > 0 && scrollRef.current) {
+      const el = scrollRef.current.querySelector(`[data-fid="${boundaryHighlightIds[0]}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
+    }
+  }, [boundaryHighlightIds]);
+
+  const baseFragments = allFragments[activeSource] || [];
+
+  // Apply overrides from edit structure boundary changes
+  const fragments = useMemo(() => {
+    if (!fragmentOverrides || fragmentOverrides.size === 0) return baseFragments;
+    return baseFragments.map((f) => {
+      const override = fragmentOverrides.get(f.fragment_id);
+      if (override) {
+        return { ...f, duration: override.duration, start_frame: override.start_frame, end_frame: override.end_frame };
+      }
+      return f;
+    });
+  }, [baseFragments, fragmentOverrides]);
+
+  const isBoundaryHighlighted = (fid: string) =>
+    boundaryHighlightIds ? boundaryHighlightIds.includes(fid) : false;
 
   return (
     <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden">
@@ -82,11 +111,18 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
       >
         {fragments.map((f, i) => (
           <React.Fragment key={f.fragment_id}>
-            <div data-fid={f.fragment_id}>
+            <div
+              data-fid={f.fragment_id}
+              className={`relative transition-all duration-150 ${
+                isBoundaryHighlighted(f.fragment_id)
+                  ? "ring-1 ring-primary/60 rounded-sm"
+                  : ""
+              }`}
+            >
               <FragmentTile
                 fragment={f}
                 isSelected={selectedFragmentId === f.fragment_id}
-                isHighlighted={highlightedFragmentId === f.fragment_id}
+                isHighlighted={highlightedFragmentId === f.fragment_id || isBoundaryHighlighted(f.fragment_id)}
                 hasActiveSelection={!!selectedFragmentId}
                 onClick={() => onFragmentClick(f)}
                 widthScale={0.6}

@@ -21,6 +21,10 @@ const Index: React.FC = () => {
   const [editFragments, setEditFragments] = useState<Fragment[]>(initialEditFragments);
   const [reservedFragments, setReservedFragments] = useState<Fragment[]>(initialReservedFragments);
 
+  // Boundary drag source-recall state
+  const [boundaryHighlightIds, setBoundaryHighlightIds] = useState<string[]>([]);
+  const [fragmentOverrides, setFragmentOverrides] = useState<Map<string, Fragment>>(new Map());
+
   // Splitter state
   const [centerWidth, setCenterWidth] = useState<number>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -142,6 +146,28 @@ const Index: React.FC = () => {
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
+  // Boundary drag: source recall + override sync
+  const handleBoundaryDragChange = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
+    if (!leftFrag || !rightFrag) {
+      setBoundaryHighlightIds([]);
+      setFragmentOverrides(new Map());
+      return;
+    }
+    setActiveSource(leftFrag.source_video);
+    setBoundaryHighlightIds([leftFrag.fragment_id, rightFrag.fragment_id]);
+  }, []);
+
+  // Keep overrides in sync with editFragments during boundary drag
+  useEffect(() => {
+    if (boundaryHighlightIds.length === 0) return;
+    const overrides = new Map<string, Fragment>();
+    for (const fid of boundaryHighlightIds) {
+      const frag = editFragments.find((f) => f.fragment_id === fid);
+      if (frag) overrides.set(fid, frag);
+    }
+    setFragmentOverrides(overrides);
+  }, [editFragments, boundaryHighlightIds]);
+
   // Global click-to-dismiss: clicking empty space restores default state
   const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
     // Only dismiss if clicking directly on a background container, not a fragment
@@ -193,6 +219,8 @@ const Index: React.FC = () => {
           onFragmentClick={handlePanoramaFragmentClick}
           intelligenceOn={intelligenceOn}
           onToggleIntelligence={() => setIntelligenceOn((p) => !p)}
+          fragmentOverrides={fragmentOverrides}
+          boundaryHighlightIds={boundaryHighlightIds}
         />
 
         <div className="flex-1 overflow-y-auto">
@@ -206,6 +234,7 @@ const Index: React.FC = () => {
             onExcludeFragment={handleExcludeFromEdit}
             onRestoreFragment={handleRestoreFragment}
             onMoveToHold={handleMoveToHold}
+            onBoundaryDragChange={handleBoundaryDragChange}
           />
         </div>
 
