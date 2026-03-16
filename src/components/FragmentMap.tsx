@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Fragment } from "@/data/fragmentData";
 import FragmentTile from "./FragmentTile";
+import { EyeOff, Eye } from "lucide-react";
 
 interface FragmentMapProps {
   fragments: Fragment[];
