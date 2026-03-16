@@ -87,6 +87,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
                 fragment={f}
                 isSelected={selectedFragmentId === f.fragment_id}
                 isHighlighted={highlightedFragmentId === f.fragment_id}
+                hasActiveSelection={!!selectedFragmentId}
                 onClick={() => onFragmentClick(f)}
                 widthScale={0.6}
                 variant="panorama"

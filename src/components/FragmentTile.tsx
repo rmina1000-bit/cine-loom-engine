@@ -9,6 +9,7 @@ interface FragmentTileProps {
   isSelected: boolean;
   isHighlighted: boolean;
   isExpanded?: boolean;
+  hasActiveSelection?: boolean;
   onClick: () => void;
   widthScale?: number;
   variant?: "panorama" | "edit" | "reserved";
@@ -24,6 +25,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   isSelected,
   isHighlighted,
   isExpanded = false,
+  hasActiveSelection = false,
   onClick,
   widthScale = 1,
   variant = "edit",
@@ -35,6 +37,26 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   const baseWidth = Math.max(minW, fragment.duration * widthScale);
   const width = isExpanded ? baseWidth * 2 : baseWidth;
   const height = variant === "panorama" ? 64 : variant === "reserved" ? 56 : 72;
+
+  // Focus-zoom: compute scale and opacity based on selection state
+  const getFocusScale = () => {
+    if (isSelected) {
+      if (variant === "edit") return 1.35;
+      if (variant === "panorama") return 1.15;
+      if (variant === "reserved") return 1.12;
+      return 1.3;
+    }
+    if (hasActiveSelection && !isSelected) {
+      if (variant === "edit") return 0.82;
+      if (variant === "panorama") return 0.9;
+      if (variant === "reserved") return 0.95;
+      return 0.85;
+    }
+    return 1;
+  };
+
+  const focusScale = getFocusScale();
+  const shrunkOpacity = hasActiveSelection && !isSelected ? 0.55 : 1;
 
   const [isHovering, setIsHovering] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -87,12 +109,16 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
         ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
         border`}
-      style={{ width, height }}
       animate={{
-        scale: isHighlighted ? 1.04 : 1,
+        scale: isHighlighted ? 1.04 : focusScale,
+        opacity: shrunkOpacity,
       }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      whileHover={{ scale: variant === "reserved" ? 1 : 1.03 }}
+      transition={{ type: "spring", stiffness: 350, damping: 28 }}
+      whileHover={{ scale: variant === "reserved" ? 1 : Math.max(focusScale, 1.03) }}
+      style={{
+        width, height,
+        zIndex: isSelected ? 30 : 1,
+      }}
     >
       {/* Fragment thumbnail image */}
       <img

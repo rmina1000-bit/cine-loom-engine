@@ -91,6 +91,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
                   isSelected={selectedFragmentId === f.fragment_id}
                   isHighlighted={false}
                   isExpanded={expandedFragmentId === f.fragment_id}
+                  hasActiveSelection={!!selectedFragmentId}
                   onClick={() => onFragmentClick(f)}
                   widthScale={0.7}
                   variant="edit"
