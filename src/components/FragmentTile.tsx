@@ -27,7 +27,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   variant = "edit",
   showIntelligence = false,
 }) => {
-  const hue = sourceColors[fragment.source_video] || fragment.thumbnail_hue;
+  const hue = Number(sourceColors[fragment.source_video] ?? fragment.thumbnail_hue);
   const minW = variant === "panorama" ? 60 : 48;
   const baseWidth = Math.max(minW, fragment.duration * widthScale);
   const width = isExpanded ? baseWidth * 2 : baseWidth;
