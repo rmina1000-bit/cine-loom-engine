@@ -13,6 +13,7 @@ interface FragmentMapProps {
   onExcludeFragment: (f: Fragment) => void;
   onRestoreFragment: (f: Fragment) => void;
   onMoveToHold: (f: Fragment) => void;
+  onBoundaryDragChange?: (leftFrag: Fragment | null, rightFrag: Fragment | null) => void;
 }
 
 const MIN_FRAGMENT_DURATION = 15; // minimum frames a fragment can shrink to
