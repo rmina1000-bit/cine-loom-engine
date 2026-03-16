@@ -93,11 +93,7 @@
 }
 
 .fragment-tile {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.fragment-tile:hover {
-  transform: scale(1.02);
-  z-index: 10;
+  transition: border-color 0.12s ease-out, box-shadow 0.12s ease-out, opacity 0.12s ease-out, filter 0.12s ease-out;
 }
 
 /* Intelligence layer heat */
