@@ -43,16 +43,16 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
   // Focus-zoom: compute scale and opacity based on selection state
   const getFocusScale = () => {
     if (isSelected) {
-      if (variant === "edit") return 1.35;
-      if (variant === "panorama") return 1.15;
-      if (variant === "reserved") return 1.12;
-      return 1.3;
+      if (variant === "edit") return 1.08;
+      if (variant === "panorama") return 1.05;
+      if (variant === "reserved") return 1.04;
+      return 1.08;
     }
     if (hasActiveSelection && !isSelected) {
-      if (variant === "edit") return 0.82;
-      if (variant === "panorama") return 0.9;
-      if (variant === "reserved") return 0.95;
-      return 0.85;
+      if (variant === "edit") return 0.94;
+      if (variant === "panorama") return 0.96;
+      if (variant === "reserved") return 0.97;
+      return 0.94;
     }
     return 1;
   };
