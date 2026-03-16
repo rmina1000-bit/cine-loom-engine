@@ -11,6 +11,7 @@ interface FragmentTileProps {
   isExpanded?: boolean;
   hasActiveSelection?: boolean;
   onClick: () => void;
+  onDoubleClick?: () => void;
   widthScale?: number;
   variant?: "panorama" | "edit" | "reserved";
   showIntelligence?: boolean;

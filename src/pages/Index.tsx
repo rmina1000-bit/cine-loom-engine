@@ -64,38 +64,48 @@ const Index: React.FC = () => {
     };
   }, [isDragging]);
 
-  // Source Recall
+  // Source Recall — single click toggles selection
   const handleEditFragmentClick = useCallback((f: Fragment) => {
+    if (selectedFragment?.fragment_id === f.fragment_id) {
+      // Toggle off
+      setSelectedFragment(null);
+      setHighlightedPanoramaFrag(null);
+      setExpandedFragment(null);
+    } else {
+      setSelectedFragment(f);
+      setActiveSource(f.source_video);
+      setHighlightedPanoramaFrag(f.fragment_id);
+      setExpandedFragment(null);
+    }
+  }, [selectedFragment]);
+
+  const handleEditFragmentDoubleClick = useCallback((f: Fragment) => {
+    // Always select + enter Time Lens
     setSelectedFragment(f);
     setActiveSource(f.source_video);
     setHighlightedPanoramaFrag(f.fragment_id);
-    if (expandedFragment === f.fragment_id) {
-      setExpandedFragment(null);
-    }
-  }, [expandedFragment]);
-
-  const handleEditFragmentDoubleClick = useCallback((f: Fragment) => {
     setExpandedFragment((prev) => (prev === f.fragment_id ? null : f.fragment_id));
   }, []);
 
   const handlePanoramaFragmentClick = useCallback((f: Fragment) => {
-    setSelectedFragment(f);
-  }, []);
-
-  const handleRemoveFromEdit = useCallback((f: Fragment) => {
-    setEditFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
-    setReservedFragments((prev) => [...prev, f]);
-  }, []);
-
-  const handleDeleteReserved = useCallback((f: Fragment) => {
-    setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
-  }, []);
+    if (selectedFragment?.fragment_id === f.fragment_id) {
+      setSelectedFragment(null);
+      setHighlightedPanoramaFrag(null);
+    } else {
+      setSelectedFragment(f);
+    }
+  }, [selectedFragment]);
 
   const handleReservedClick = useCallback((f: Fragment) => {
-    setSelectedFragment(f);
-    setActiveSource(f.source_video);
-    setHighlightedPanoramaFrag(f.fragment_id);
-  }, []);
+    if (selectedFragment?.fragment_id === f.fragment_id) {
+      setSelectedFragment(null);
+      setHighlightedPanoramaFrag(null);
+    } else {
+      setSelectedFragment(f);
+      setActiveSource(f.source_video);
+      setHighlightedPanoramaFrag(f.fragment_id);
+    }
+  }, [selectedFragment]);
 
   return (
     <div ref={containerRef} className="flex h-screen w-full overflow-hidden bg-background">
