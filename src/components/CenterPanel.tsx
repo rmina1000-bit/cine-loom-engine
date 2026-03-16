@@ -56,7 +56,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
         )}
 
         {/* Divider */}
-        <div className="h-px bg-border" />
+        <div className="h-px bg-border/40" />
 
         {/* Selected fragment info */}
         {selectedFragment ? (
