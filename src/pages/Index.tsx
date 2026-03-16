@@ -212,6 +212,7 @@ const Index: React.FC = () => {
             onExcludeFragment={handleExcludeFromEdit}
             onRestoreFragment={handleRestoreFragment}
             onMoveToHold={handleMoveToHold}
+            onBoundaryDragChange={handleBoundaryDragChange}
           />
         </div>
 
