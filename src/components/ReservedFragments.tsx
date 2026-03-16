@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { Fragment } from "@/data/fragmentData";
 import FragmentTile from "./FragmentTile";
-import { Trash2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 
 interface Position {
   x: number;
@@ -12,14 +12,14 @@ interface ReservedFragmentsProps {
   fragments: Fragment[];
   selectedFragmentId: string | null;
   onFragmentClick: (f: Fragment) => void;
-  onDeleteFragment: (f: Fragment) => void;
+  onRestoreFragment: (f: Fragment) => void;
 }
 
 const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
   fragments,
   selectedFragmentId,
   onFragmentClick,
-  onDeleteFragment,
+  onRestoreFragment,
 }) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
@@ -28,7 +28,6 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
 
   const getPosition = (fragId: string, index: number): Position => {
     if (positions[fragId]) return positions[fragId];
-    // Default scatter layout
     return { x: 12 + (index % 5) * 80, y: 8 + Math.floor(index / 5) * 68 };
   };
 
@@ -61,13 +60,15 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold text-foreground tracking-wide">Reserved Fragments</h3>
-          <span className="text-[10px] text-muted-foreground">({fragments.length})</span>
+          <h3 className="text-xs font-semibold text-foreground tracking-wide">Hold Area</h3>
+          <span className="text-[10px] text-muted-foreground">({fragments.length} excluded)</span>
         </div>
-        <span className="text-[10px] text-muted-foreground">Free board · drag anywhere · no alignment</span>
+        <span className="text-[10px] text-muted-foreground">
+          Excluded from render · drag to arrange · restorable
+        </span>
       </div>
 
-      {/* Freeform board - absolute positioning, no snap, no grid */}
+      {/* Freeform board */}
       <div
         ref={boardRef}
         className="relative min-h-[120px] select-none"
@@ -104,19 +105,21 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
           );
         })}
         {fragments.length === 0 && (
-          <p className="text-xs text-muted-foreground italic px-3 py-4">Drop fragments here to reserve them.</p>
+          <p className="text-xs text-muted-foreground italic px-3 py-4">
+            Excluded fragments appear here. They remain recoverable from the source.
+          </p>
         )}
 
-        {/* Trash icon */}
+        {/* Restore button */}
         <button
           onClick={() => {
             const selected = fragments.find((f) => f.fragment_id === selectedFragmentId);
-            if (selected) onDeleteFragment(selected);
+            if (selected) onRestoreFragment(selected);
           }}
-          className="absolute bottom-2 right-2 w-7 h-7 rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all z-40"
-          title="Delete selected fragment pointer"
+          className="absolute bottom-2 right-2 w-7 h-7 rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all z-40"
+          title="Restore selected fragment to Edit Structure"
         >
-          <Trash2 size={14} />
+          <RotateCcw size={14} />
         </button>
       </div>
     </div>
