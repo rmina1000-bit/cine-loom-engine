@@ -17,9 +17,9 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
   onDeleteFragment,
 }) => {
   return (
-    <div className="flex flex-col bg-card rounded-lg border border-border overflow-hidden relative">
+    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden relative">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold text-foreground tracking-wide">Reserved Fragments</h3>
           <span className="text-[10px] text-muted-foreground">({fragments.length})</span>
@@ -52,7 +52,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
             const selected = fragments.find((f) => f.fragment_id === selectedFragmentId);
             if (selected) onDeleteFragment(selected);
           }}
-          className="absolute bottom-2 right-2 w-8 h-8 rounded-md bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-all"
+          className="absolute bottom-2 right-2 w-7 h-7 rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
           title="Delete selected fragment pointer"
         >
           <Trash2 size={14} />

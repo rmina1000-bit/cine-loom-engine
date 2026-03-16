@@ -25,9 +25,9 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   return (
-    <div className="flex flex-col bg-card rounded-lg border border-border overflow-hidden">
+    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold text-foreground tracking-wide">Fragment Map</h3>
           <span className="text-[10px] text-muted-foreground">({fragments.length} fragments)</span>

@@ -13,14 +13,14 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
   const sourceInfo = sourceVideos.find((s) => s.id === selectedSource);
 
   return (
-    <div className="w-[340px] flex flex-col bg-card border-r border-border h-full flex-shrink-0">
+    <div className="w-[340px] flex flex-col bg-card/40 h-full flex-shrink-0">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border">
+      <div className="px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground tracking-wide">Source Analysis</h2>
       </div>
 
       {/* Source summary cards */}
-      <div className="px-3 py-2 border-b border-border">
+      <div className="px-3 py-2">
         <div className="flex flex-wrap gap-1.5">
           {sourceVideos.slice(0, 7).map((sv) => (
             <div
@@ -56,7 +56,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
         )}
 
         {/* Divider */}
-        <div className="h-px bg-border" />
+        <div className="h-px bg-border/40" />
 
         {/* Selected fragment info */}
         {selectedFragment ? (
@@ -143,7 +143,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
       </div>
 
       {/* Chat bar */}
-      <div className="px-3 py-2 border-t border-border">
+      <div className="px-3 py-2">
         <div className="flex items-center gap-2 bg-secondary rounded-lg px-2 py-1.5">
           <button className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex-shrink-0">
             <Plus size={16} />

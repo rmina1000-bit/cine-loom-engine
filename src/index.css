@@ -6,58 +6,58 @@
 
 @layer base {
   :root {
-    --background: 0 0% 6.7%;
-    --foreground: 0 0% 89.8%;
+    --background: 225 14% 11%;
+    --foreground: 30 15% 85%;
 
-    --card: 0 0% 11%;
-    --card-foreground: 0 0% 89.8%;
+    --card: 225 12% 14%;
+    --card-foreground: 30 15% 85%;
 
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 89.8%;
+    --popover: 225 12% 14%;
+    --popover-foreground: 30 15% 85%;
 
-    --primary: 43 72% 52%;
-    --primary-foreground: 0 0% 6.7%;
+    --primary: 28 55% 62%;
+    --primary-foreground: 225 14% 11%;
 
-    --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 89.8%;
+    --secondary: 225 10% 18%;
+    --secondary-foreground: 30 12% 80%;
 
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 50%;
+    --muted: 225 8% 22%;
+    --muted-foreground: 220 8% 52%;
 
-    --accent: 0 0% 16%;
-    --accent-foreground: 0 0% 89.8%;
+    --accent: 225 10% 18%;
+    --accent-foreground: 30 12% 80%;
 
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 0 0% 89.8%;
+    --destructive: 0 45% 55%;
+    --destructive-foreground: 30 15% 90%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 27%;
-    --ring: 43 72% 52%;
+    --border: 225 8% 20%;
+    --input: 225 8% 24%;
+    --ring: 28 55% 62%;
 
     --radius: 0.5rem;
 
     /* CCUT custom tokens */
-    --ccut-bg-deep: 0 0% 6.7%;
-    --ccut-bg-panel: 0 0% 11%;
-    --ccut-bg-elevated: 0 0% 14%;
-    --ccut-gold: 43 72% 52%;
-    --ccut-gold-dim: 43 50% 35%;
-    --ccut-text-primary: 0 0% 89.8%;
-    --ccut-text-secondary: 0 0% 50%;
-    --ccut-stroke: 0 0% 27%;
-    --ccut-indigo: 240 42% 46%;
-    --ccut-amber: 38 92% 50%;
-    --ccut-intelligence-start: 240 42% 46%;
-    --ccut-intelligence-end: 38 92% 50%;
+    --ccut-bg-deep: 225 14% 11%;
+    --ccut-bg-panel: 225 12% 14%;
+    --ccut-bg-elevated: 225 10% 17%;
+    --ccut-gold: 28 55% 62%;
+    --ccut-gold-dim: 28 35% 42%;
+    --ccut-text-primary: 30 15% 85%;
+    --ccut-text-secondary: 220 8% 52%;
+    --ccut-stroke: 225 6% 22%;
+    --ccut-indigo: 220 30% 52%;
+    --ccut-amber: 28 60% 58%;
+    --ccut-intelligence-start: 220 30% 52%;
+    --ccut-intelligence-end: 28 60% 58%;
 
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 89.8%;
-    --sidebar-primary: 43 72% 52%;
-    --sidebar-primary-foreground: 0 0% 6.7%;
-    --sidebar-accent: 0 0% 14%;
-    --sidebar-accent-foreground: 0 0% 89.8%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 43 72% 52%;
+    --sidebar-background: 225 14% 12%;
+    --sidebar-foreground: 30 15% 85%;
+    --sidebar-primary: 28 55% 62%;
+    --sidebar-primary-foreground: 225 14% 11%;
+    --sidebar-accent: 225 10% 17%;
+    --sidebar-accent-foreground: 30 12% 80%;
+    --sidebar-border: 225 6% 20%;
+    --sidebar-ring: 28 55% 62%;
   }
 }
 
@@ -73,23 +73,23 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(0 0% 8%);
+  background: hsl(225 14% 10%);
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 22%);
+  background: hsl(225 8% 24%);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 30%);
+  background: hsl(225 8% 32%);
 }
 
 /* Fragment glow effect */
 .fragment-glow {
-  box-shadow: 0 0 12px 2px hsl(43 72% 52% / 0.4), inset 0 0 8px hsl(43 72% 52% / 0.1);
+  box-shadow: 0 0 10px 1px hsl(28 55% 62% / 0.3), inset 0 0 6px hsl(28 55% 62% / 0.08);
 }
 
 .fragment-tile {
@@ -102,8 +102,8 @@
 
 /* Intelligence layer heat */
 .intelligence-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -115,12 +115,12 @@
 
 /* Boundary handle */
 .boundary-handle {
-  width: 3px;
-  background: hsl(0 0% 25%);
+  width: 2px;
+  background: hsl(225 6% 20%);
   cursor: col-resize;
   transition: background 0.15s;
   flex-shrink: 0;
 }
 .boundary-handle:hover {
-  background: hsl(43 72% 52%);
+  background: hsl(28 55% 62%);
 }
