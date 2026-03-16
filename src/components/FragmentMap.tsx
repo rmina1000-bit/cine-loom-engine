@@ -192,6 +192,19 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
                     </div>
                   </div>
                 )}
+                {/* Exclude/Restore toggle button on selected fragment */}
+                {selectedFragmentId === f.fragment_id && (
+                  <button
+                    className="absolute top-0.5 right-0.5 z-10 p-0.5 rounded bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
+                    title={f.excluded ? "Restore to render" : "Exclude from render"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      f.excluded ? onRestoreFragment(f) : onExcludeFragment(f);
+                    }}
+                  >
+                    {f.excluded ? <Eye size={10} /> : <EyeOff size={10} />}
+                  </button>
+                )}
               </div>
               {/* Shared boundary handle - draggable to redistribute duration */}
               {index < fragments.length - 1 && (
