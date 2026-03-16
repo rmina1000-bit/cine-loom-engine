@@ -731,9 +731,9 @@ When dragging a real internal boundary inside the precision overlay:
 ### 8.1 Architecture
 
 - Two stacks: `undoStack: UndoEntry[]` and `redoStack: UndoEntry[]`.
-- Before any mutating action, push a snapshot of `{editFragments, reservedFragments}` to `undoStack` and clear `redoStack`.
-- Undo: pop from `undoStack`, push current state to `redoStack`, restore popped state.
-- Redo: pop from `redoStack`, push current state to `undoStack`, restore popped state.
+- Before any mutating action, push a snapshot of `{editFragments, reservedFragments, holdAreaPositions}` to `undoStack` and clear `redoStack`.
+- Undo: pop from `undoStack`, push current state to `redoStack`, restore popped state (all three: edit, reserved, positions).
+- Redo: pop from `redoStack`, push current state to `undoStack`, restore popped state (all three).
 - Maximum stack depth: 50 entries (drop oldest on overflow).
 
 ### 8.2 Covered Actions
