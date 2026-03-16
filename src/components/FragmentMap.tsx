@@ -65,15 +65,17 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
               transition={{ type: "spring", stiffness: 500, damping: 35 }}
               className="flex items-stretch"
             >
-              <FragmentTile
-                fragment={f}
-                isSelected={selectedFragmentId === f.fragment_id}
-                isHighlighted={false}
-                isExpanded={expandedFragmentId === f.fragment_id}
-                onClick={() => onFragmentClick(f)}
-                widthScale={0.7}
-                variant="edit"
-              />
+              <div onDoubleClick={() => onFragmentDoubleClick(f)}>
+                <FragmentTile
+                  fragment={f}
+                  isSelected={selectedFragmentId === f.fragment_id}
+                  isHighlighted={false}
+                  isExpanded={expandedFragmentId === f.fragment_id}
+                  onClick={() => onFragmentClick(f)}
+                  widthScale={0.7}
+                  variant="edit"
+                />
+              </div>
               {/* Boundary handle */}
               {index < fragments.length - 1 && (
                 <div className="boundary-handle self-stretch" title="Drag to redistribute" />
