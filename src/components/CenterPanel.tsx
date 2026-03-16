@@ -1,24 +1,68 @@
 import React, { useState } from "react";
-import { Plus, Send, ChevronRight } from "lucide-react";
+import { Plus, Send, ChevronRight, Play, Film } from "lucide-react";
 import { Fragment, sourceVideos, formatDuration } from "@/data/fragmentData";
 import { getFragmentThumbnail } from "@/data/thumbnailMap";
 
 interface CenterPanelProps {
   selectedFragment: Fragment | null;
   selectedSource: string;
+  editSequence?: Fragment[];
 }
 
-const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSource }) => {
+const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSource, editSequence = [] }) => {
   const [chatInput, setChatInput] = useState("");
 
   const sourceInfo = sourceVideos.find((s) => s.id === selectedSource);
+
+  // Total edit structure duration
+  const totalDuration = editSequence.reduce((sum, f) => sum + f.duration, 0);
 
   return (
     <div className="flex flex-col bg-card/40 h-full w-full">
       {/* Header */}
       <div className="px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground tracking-wide">Source Analysis</h2>
+        <h2 className="text-sm font-semibold text-foreground tracking-wide">Structure Analysis</h2>
       </div>
+
+      {/* Edit Structure sequence summary */}
+      {editSequence.length > 0 && (
+        <div className="px-3 py-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Edit Structure
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {editSequence.length} fragments · {formatDuration(totalDuration)}
+            </span>
+          </div>
+          {/* Sequence minimap */}
+          <div className="flex items-center gap-0 h-5 rounded overflow-hidden">
+            {editSequence.map((f) => (
+              <div
+                key={f.fragment_id}
+                className={`h-full overflow-hidden relative flex-shrink-0 ${
+                  selectedFragment?.fragment_id === f.fragment_id ? "ring-1 ring-primary" : ""
+                }`}
+                style={{ width: Math.max(8, (f.duration / totalDuration) * 100) + "%" }}
+                title={`${f.fragment_id} · ${formatDuration(f.duration)}`}
+              >
+                <img
+                  src={getFragmentThumbnail(f.fragment_id, f.source_video, f.thumbnail?.thumbnail_url)}
+                  alt={f.fragment_id}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+          {/* Sequence text */}
+          <p className="text-[9px] text-muted-foreground/60 leading-tight truncate">
+            {editSequence.map(f => f.fragment_id).join(" → ")}
+          </p>
+        </div>
+      )}
+
+      {/* Divider */}
+      <div className="mx-3 h-px bg-border/30" />
 
       {/* Source summary cards */}
       <div className="px-3 py-2">
@@ -56,7 +100,6 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
           </div>
         )}
 
-        {/* Divider */}
         <div className="h-px bg-border/40" />
 
         {/* Selected fragment info */}
@@ -98,16 +141,20 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
               </div>
             </div>
 
-            {/* Editorial context */}
+            {/* Boundary context */}
             <div className="space-y-1.5">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Editorial Context
+                Structure Context
               </h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Fragment {selectedFragment.fragment_id} serves as a {selectedFragment.intelligence && selectedFragment.intelligence.hook > 0.7 ? "strong hook element" : "supporting transition"} in
-                the current edit structure. Sourced from {sourceInfo?.label || `Source ${selectedFragment.source_video}`}, it
-                contributes {selectedFragment.intelligence && selectedFragment.intelligence.emotional > 0.6 ? "significant emotional weight" : "structural continuity"} to
-                the narrative flow.
+                Fragment {selectedFragment.fragment_id} occupies frames {selectedFragment.start_frame}–{selectedFragment.end_frame} ({formatDuration(selectedFragment.duration)}).
+                {selectedFragment.intelligence && selectedFragment.intelligence.hook > 0.7
+                  ? " Strong hook element in the edit structure."
+                  : " Supporting structural element in the sequence."}
+                {" "}Boundaries are shared with adjacent fragments — adjusting this fragment's edges will redistribute neighboring durations.
+              </p>
+              <p className="text-[10px] text-muted-foreground/50">
+                Excluding this fragment will move it to the Hold Area, not delete the source material.
               </p>
             </div>
 
@@ -139,9 +186,24 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
           </div>
         ) : (
           <div className="text-xs text-muted-foreground italic">
-            Select a fragment to view analysis and editorial context.
+            Select a fragment to view its structure context and editorial analysis.
           </div>
         )}
+
+        {/* Render preview placeholder */}
+        <div className="h-px bg-border/40" />
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Film size={12} />
+            Render Preview
+          </h4>
+          <div className="w-full h-20 rounded-md border border-dashed border-border/40 flex items-center justify-center gap-2 bg-secondary/30">
+            <Play size={14} className="text-muted-foreground/40" />
+            <span className="text-[10px] text-muted-foreground/40">
+              Request render to preview final video here
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Chat bar */}
@@ -154,7 +216,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Ask about fragments..."
+            placeholder="Ask about structure, request render..."
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           <button className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex-shrink-0">

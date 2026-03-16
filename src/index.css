@@ -119,14 +119,19 @@
   scroll-behavior: smooth;
 }
 
-/* Boundary handle */
+/* Boundary handle — shared boundary between adjacent fragments */
 .boundary-handle {
-  width: 2px;
-  background: hsl(228 5% 20%);
+  width: 3px;
+  background: hsl(228 5% 22%);
   cursor: col-resize;
-  transition: background 0.15s;
+  transition: background 0.15s, width 0.15s;
   flex-shrink: 0;
 }
 .boundary-handle:hover {
   background: hsl(211 55% 58%);
+  width: 4px;
+}
+.boundary-handle-active {
+  background: hsl(var(--primary)) !important;
+  width: 4px !important;
 }

@@ -28,14 +28,12 @@ const Index: React.FC = () => {
   });
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const leftNavWidth = 56; // w-14 = 3.5rem = 56px
+  const leftNavWidth = 56;
 
-  // Persist width
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(centerWidth));
   }, [centerWidth]);
 
-  // Global mouse handlers for smooth dragging
   useEffect(() => {
     if (!isDragging) return;
 
@@ -64,10 +62,9 @@ const Index: React.FC = () => {
     };
   }, [isDragging]);
 
-  // Source Recall — single click toggles selection
+  // Single click toggles selection
   const handleEditFragmentClick = useCallback((f: Fragment) => {
     if (selectedFragment?.fragment_id === f.fragment_id) {
-      // Toggle off
       setSelectedFragment(null);
       setHighlightedPanoramaFrag(null);
       setExpandedFragment(null);
@@ -79,8 +76,8 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
+  // Double click enters Time Lens
   const handleEditFragmentDoubleClick = useCallback((f: Fragment) => {
-    // Always select + enter Time Lens
     setSelectedFragment(f);
     setActiveSource(f.source_video);
     setHighlightedPanoramaFrag(f.fragment_id);
@@ -107,23 +104,31 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
-  const handleRemoveFromEdit = useCallback((f: Fragment) => {
+  // Exclude from edit structure → move to Hold Area (not deletion)
+  const handleExcludeFromEdit = useCallback((f: Fragment) => {
     setEditFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setReservedFragments((prev) => [...prev, f]);
-  }, []);
+    if (selectedFragment?.fragment_id === f.fragment_id) {
+      setSelectedFragment(null);
+    }
+  }, [selectedFragment]);
 
-  const handleDeleteReserved = useCallback((f: Fragment) => {
+  // Restore from Hold Area (re-add to end of edit structure)
+  const handleRestoreFromHold = useCallback((f: Fragment) => {
     setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+    setEditFragments((prev) => [...prev, f]);
   }, []);
 
   return (
     <div ref={containerRef} className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Left Navigation */}
       <LeftNav activeItem={activeNavItem} onItemClick={setActiveNavItem} />
 
-      {/* Center Panel - resizable */}
       <div style={{ width: centerWidth, flexShrink: 0 }}>
-        <CenterPanel selectedFragment={selectedFragment} selectedSource={activeSource} />
+        <CenterPanel
+          selectedFragment={selectedFragment}
+          selectedSource={activeSource}
+          editSequence={editFragments}
+        />
       </div>
 
       {/* Vertical Splitter */}
@@ -145,7 +150,7 @@ const Index: React.FC = () => {
         />
       </div>
 
-      {/* Right Workspace - fills remaining */}
+      {/* Right Workspace */}
       <div className="flex-1 flex flex-col gap-2 p-2 overflow-hidden min-w-0">
         <OriginalPanorama
           activeSource={activeSource}
@@ -165,7 +170,7 @@ const Index: React.FC = () => {
             expandedFragmentId={expandedFragment}
             onFragmentClick={handleEditFragmentClick}
             onFragmentDoubleClick={handleEditFragmentDoubleClick}
-            onRemoveFragment={handleRemoveFromEdit}
+            onExcludeFragment={handleExcludeFromEdit}
           />
         </div>
 
@@ -173,7 +178,7 @@ const Index: React.FC = () => {
           fragments={reservedFragments}
           selectedFragmentId={selectedFragment?.fragment_id || null}
           onFragmentClick={handleReservedClick}
-          onDeleteFragment={handleDeleteReserved}
+          onRestoreFragment={handleRestoreFromHold}
         />
       </div>
     </div>
