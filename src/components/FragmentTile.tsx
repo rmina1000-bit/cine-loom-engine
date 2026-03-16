@@ -38,8 +38,8 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       layout
       layoutId={`${variant}-${fragment.fragment_id}`}
       onClick={onClick}
-      className={`fragment-tile relative rounded cursor-pointer overflow-hidden flex-shrink-0
-        ${isSelected ? "fragment-glow border-primary" : isHighlighted ? "border-primary/50" : "border-border"}
+      className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
+        ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
         border`}
       style={{ width, height }}
       animate={{
