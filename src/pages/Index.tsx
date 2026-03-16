@@ -197,6 +197,8 @@ const Index: React.FC = () => {
           onFragmentClick={handlePanoramaFragmentClick}
           intelligenceOn={intelligenceOn}
           onToggleIntelligence={() => setIntelligenceOn((p) => !p)}
+          fragmentOverrides={fragmentOverrides}
+          boundaryHighlightIds={boundaryHighlightIds}
         />
 
         <div className="flex-1 overflow-y-auto">
