@@ -137,8 +137,6 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
 
   return (
     <motion.div
-      layout={variant !== "reserved"}
-      layoutId={variant !== "reserved" ? `${variant}-${fragment.fragment_id}` : undefined}
       onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => { setIsHovering(false); }}
@@ -146,11 +144,11 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
         ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
         border`}
       animate={{
-        scale: isHighlighted ? 1.04 : focusScale,
+        scale: isHighlighted ? 1.02 : focusScale,
         opacity: shrunkOpacity,
       }}
-      transition={{ type: "spring", stiffness: 350, damping: 28 }}
-      whileHover={{ scale: variant === "reserved" ? 1 : Math.max(focusScale, 1.03) }}
+      transition={{ type: "tween", duration: 0.15, ease: "easeOut" }}
+      whileHover={{ scale: variant === "reserved" ? 1 : Math.max(focusScale, 1.01) }}
       style={{
         width, height,
         zIndex: isSelected ? 30 : 1,
