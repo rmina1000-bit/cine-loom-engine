@@ -6,58 +6,58 @@
 
 @layer base {
   :root {
-    --background: 225 14% 11%;
-    --foreground: 30 15% 85%;
+    --background: 228 12% 10%;
+    --foreground: 220 10% 88%;
 
-    --card: 225 12% 14%;
-    --card-foreground: 30 15% 85%;
+    --card: 228 10% 13%;
+    --card-foreground: 220 10% 88%;
 
-    --popover: 225 12% 14%;
-    --popover-foreground: 30 15% 85%;
+    --popover: 228 10% 13%;
+    --popover-foreground: 220 10% 88%;
 
-    --primary: 28 55% 62%;
-    --primary-foreground: 225 14% 11%;
+    --primary: 211 55% 58%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 225 10% 18%;
-    --secondary-foreground: 30 12% 80%;
+    --secondary: 228 8% 17%;
+    --secondary-foreground: 220 8% 78%;
 
-    --muted: 225 8% 22%;
-    --muted-foreground: 220 8% 52%;
+    --muted: 228 6% 21%;
+    --muted-foreground: 220 6% 50%;
 
-    --accent: 225 10% 18%;
-    --accent-foreground: 30 12% 80%;
+    --accent: 228 8% 17%;
+    --accent-foreground: 220 8% 78%;
 
-    --destructive: 0 45% 55%;
-    --destructive-foreground: 30 15% 90%;
+    --destructive: 0 50% 55%;
+    --destructive-foreground: 0 0% 95%;
 
-    --border: 225 8% 20%;
-    --input: 225 8% 24%;
-    --ring: 28 55% 62%;
+    --border: 228 6% 18%;
+    --input: 228 6% 22%;
+    --ring: 211 55% 58%;
 
     --radius: 0.5rem;
 
     /* CCUT custom tokens */
-    --ccut-bg-deep: 225 14% 11%;
-    --ccut-bg-panel: 225 12% 14%;
-    --ccut-bg-elevated: 225 10% 17%;
-    --ccut-gold: 28 55% 62%;
-    --ccut-gold-dim: 28 35% 42%;
-    --ccut-text-primary: 30 15% 85%;
-    --ccut-text-secondary: 220 8% 52%;
-    --ccut-stroke: 225 6% 22%;
-    --ccut-indigo: 220 30% 52%;
-    --ccut-amber: 28 60% 58%;
-    --ccut-intelligence-start: 220 30% 52%;
-    --ccut-intelligence-end: 28 60% 58%;
+    --ccut-bg-deep: 228 12% 10%;
+    --ccut-bg-panel: 228 10% 13%;
+    --ccut-bg-elevated: 228 8% 16%;
+    --ccut-gold: 211 55% 58%;
+    --ccut-gold-dim: 211 35% 40%;
+    --ccut-text-primary: 220 10% 88%;
+    --ccut-text-secondary: 220 6% 50%;
+    --ccut-stroke: 228 5% 20%;
+    --ccut-indigo: 220 35% 52%;
+    --ccut-amber: 30 50% 55%;
+    --ccut-intelligence-start: 220 35% 52%;
+    --ccut-intelligence-end: 30 50% 55%;
 
-    --sidebar-background: 225 14% 12%;
-    --sidebar-foreground: 30 15% 85%;
-    --sidebar-primary: 28 55% 62%;
-    --sidebar-primary-foreground: 225 14% 11%;
-    --sidebar-accent: 225 10% 17%;
-    --sidebar-accent-foreground: 30 12% 80%;
-    --sidebar-border: 225 6% 20%;
-    --sidebar-ring: 28 55% 62%;
+    --sidebar-background: 228 12% 11%;
+    --sidebar-foreground: 220 10% 88%;
+    --sidebar-primary: 211 55% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 228 8% 16%;
+    --sidebar-accent-foreground: 220 8% 78%;
+    --sidebar-border: 228 5% 18%;
+    --sidebar-ring: 211 55% 58%;
   }
 }
 
@@ -89,7 +89,7 @@
 
 /* Fragment glow effect */
 .fragment-glow {
-  box-shadow: 0 0 10px 1px hsl(28 55% 62% / 0.3), inset 0 0 6px hsl(28 55% 62% / 0.08);
+  box-shadow: 0 0 10px 1px hsl(211 55% 58% / 0.25), inset 0 0 6px hsl(211 55% 58% / 0.06);
 }
 
 .fragment-tile {
@@ -116,11 +116,11 @@
 /* Boundary handle */
 .boundary-handle {
   width: 2px;
-  background: hsl(225 6% 20%);
+  background: hsl(228 5% 20%);
   cursor: col-resize;
   transition: background 0.15s;
   flex-shrink: 0;
 }
 .boundary-handle:hover {
-  background: hsl(28 55% 62%);
+  background: hsl(211 55% 58%);
 }
