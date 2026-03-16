@@ -95,6 +95,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
                 fragment={f}
                 isSelected={selectedFragmentId === f.fragment_id}
                 isHighlighted={false}
+                hasActiveSelection={!!selectedFragmentId}
                 onClick={() => onFragmentClick(f)}
                 widthScale={0.5}
                 variant="reserved"
