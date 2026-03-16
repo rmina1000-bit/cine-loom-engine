@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Send, ChevronRight } from "lucide-react";
 import { Fragment, sourceVideos, formatDuration } from "@/data/fragmentData";
+import { getFragmentThumbnail } from "@/data/thumbnailMap";
 
 interface CenterPanelProps {
   selectedFragment: Fragment | null;

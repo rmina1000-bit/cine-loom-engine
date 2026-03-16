@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Fragment, formatDuration } from "@/data/fragmentData";
+import { getFragmentThumbnail } from "@/data/thumbnailMap";
 import { motion } from "framer-motion";
 import { Play, Pause } from "lucide-react";
 
