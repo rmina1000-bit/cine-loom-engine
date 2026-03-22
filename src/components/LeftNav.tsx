@@ -22,7 +22,7 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
       <div className="px-5 pt-4 pb-0">
         <span className="text-[16px] font-semibold tracking-[0.18em]">
           <span className="bg-gradient-to-r from-blue-400 to-primary bg-clip-text text-transparent">CC</span>
-          <span className="text-[14px] font-medium text-foreground/70 tracking-[0.12em]">UT</span>
+          <span className="text-[15px] font-semibold text-foreground/75 tracking-[0.14em]">UT</span>
         </span>
       </div>
 
