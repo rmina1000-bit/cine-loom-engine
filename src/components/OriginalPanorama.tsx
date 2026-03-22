@@ -112,9 +112,11 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
             <div
               data-fid={f.fragment_id}
               className={`relative transition-all duration-150 ${
-                isBoundaryHighlighted(f.fragment_id)
-                  ? "ring-1 ring-primary/60 rounded-sm"
-                  : ""
+                highlightedFragmentId === f.fragment_id
+                  ? "ring-1 ring-primary/40 rounded-sm"
+                  : isBoundaryHighlighted(f.fragment_id)
+                    ? "ring-1 ring-primary/30 rounded-sm"
+                    : ""
               }`}
             >
               <FragmentTile

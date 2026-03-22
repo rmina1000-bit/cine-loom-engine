@@ -114,9 +114,9 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
       onDragOver={handleTrashDragOver}
       onDrop={handleTrashDrop}
     >
-      <div className="flex items-center justify-between px-3 py-1.5">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-[10px] font-medium text-foreground/50 uppercase tracking-widest">보류맵</h3>
+          <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">보류맵</h3>
           {fragments.length > 0 && (
             <span className="text-[9px] text-muted-foreground/35">{fragments.length}</span>
           )}
