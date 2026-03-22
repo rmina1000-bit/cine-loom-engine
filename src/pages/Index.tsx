@@ -251,6 +251,7 @@ const Index: React.FC = () => {
           selectedFragmentId={selectedFragment?.fragment_id || null}
           onFragmentClick={handleReservedClick}
           onRestoreFragment={handleRestoreFromHold}
+          onDeleteFragment={handleDeleteFromHold}
         />
       </div>
     </div>
