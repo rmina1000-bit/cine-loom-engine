@@ -144,7 +144,7 @@ const CenterPanel: React.FC<CenterPanelProps> = ({ selectedFragment, selectedSou
               <p className="text-xs text-muted-foreground">드래그하거나 클릭해서 파일을 선택하세요</p>
             </div>
             <button
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="px-5 py-2 rounded-lg border border-foreground/20 bg-transparent text-foreground text-sm font-medium hover:bg-foreground/5 hover:border-foreground/40 transition-all"
               onClick={(e) => { e.stopPropagation(); handleUpload(); }}
             >
               파일 선택
