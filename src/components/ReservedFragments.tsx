@@ -213,7 +213,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
                   <div
                     className="w-8 h-5 rounded-[3px] flex-shrink-0 bg-secondary"
                     style={{
-                      backgroundImage: `url(${getFragmentThumbnail(f.fragment_id)})`,
+                      backgroundImage: `url(${getFragmentThumbnail(f.fragment_id, f.source_video)})`,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
                     }}
