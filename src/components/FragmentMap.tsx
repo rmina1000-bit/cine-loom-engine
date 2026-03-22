@@ -232,7 +232,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold text-foreground tracking-wide">Edit Structure</h3>
+          <h3 className="text-xs font-semibold text-foreground tracking-wide">구조 편집</h3>
           <span className="text-[10px] text-muted-foreground">
             ({activeCount} active{excludedCount > 0 ? ` · ${excludedCount} excluded` : ""})
           </span>

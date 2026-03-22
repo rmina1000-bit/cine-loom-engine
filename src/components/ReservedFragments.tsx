@@ -64,7 +64,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
           <span className="text-[10px] text-muted-foreground">({fragments.length} excluded)</span>
         </div>
         <span className="text-[10px] text-muted-foreground">
-          Excluded from render · drag to arrange · restorable
+          렌더에서 제외됨 · 자유 배치 · 복원 가능
         </span>
       </div>
 

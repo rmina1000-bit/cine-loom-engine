@@ -100,7 +100,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
             }`}
         >
           {intelligenceOn ? <Eye size={12} /> : <EyeOff size={12} />}
-          Intelligence
+          정보
         </button>
       </div>
 
