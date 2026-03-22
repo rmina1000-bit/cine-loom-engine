@@ -93,18 +93,39 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
     setTrashHover(false);
   }, [dragging, trashHover, onDeleteFragment, fragments]);
 
+  // Handle drag-drop from trash to restore to hold
+  const handleTrashDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("application/ccut-trash-restore")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+  }, []);
+
+  const handleTrashDrop = useCallback((e: React.DragEvent) => {
+    const data = e.dataTransfer.getData("application/ccut-trash-restore");
+    if (!data) return;
+    e.preventDefault();
+    const frag = JSON.parse(data) as Fragment;
+    onRestoreToHold(frag);
+  }, [onRestoreToHold]);
+
   return (
-    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden relative">
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold text-foreground tracking-wide">보류맵</h3>
-          <span className="text-[10px] text-muted-foreground">({fragments.length})</span>
+    <div className="flex flex-col bg-card/30 rounded-lg overflow-hidden relative border border-border/10"
+      onDragOver={handleTrashDragOver}
+      onDrop={handleTrashDrop}
+    >
+      <div className="flex items-center justify-between px-3 py-1.5">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-[10px] font-medium text-foreground/50 uppercase tracking-widest">보류맵</h3>
+          {fragments.length > 0 && (
+            <span className="text-[9px] text-muted-foreground/35">{fragments.length}</span>
+          )}
         </div>
       </div>
 
       <div
         ref={boardRef}
-        className="relative min-h-[120px] select-none"
+        className="relative min-h-[100px] select-none"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { setDragging(null); setTrashHover(false); }}

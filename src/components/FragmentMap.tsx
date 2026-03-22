@@ -228,19 +228,31 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     : [];
 
   return (
-    <div className="flex flex-col bg-card/50 rounded-lg">
+    <div className="flex flex-col bg-card/30 rounded-lg border border-border/10"
+      onDragOver={(e) => {
+        const data = e.dataTransfer.types.includes("application/ccut-trash-restore");
+        if (data) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+      }}
+      onDrop={(e) => {
+        const data = e.dataTransfer.getData("application/ccut-trash-restore");
+        if (!data) return;
+        e.preventDefault();
+        // Trash restore is handled by parent via onFragmentsChange — we need to bubble up
+        // Actually handled in Index.tsx via the dedicated handler
+      }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold text-foreground tracking-wide">조각맵</h3>
-          <span className="text-[10px] text-muted-foreground">
-            ({activeCount} active{excludedCount > 0 ? ` · ${excludedCount} excluded` : ""})
+      <div className="flex items-center justify-between px-3 py-1.5">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-[10px] font-medium text-foreground/50 uppercase tracking-widest">조각맵</h3>
+          <span className="text-[9px] text-muted-foreground/35">
+            {activeCount}{excludedCount > 0 ? ` · ${excludedCount}` : ""}
           </span>
         </div>
       </div>
 
-      {/* Fragment board: only visible (non-excluded) fragments + synthetic seams */}
-      <div className="flex flex-wrap items-start content-start gap-0 px-2 py-2 min-h-[160px]">
+      {/* Fragment board */}
+      <div className="flex flex-wrap items-start content-start gap-0 px-2 py-1.5 min-h-[160px]">
         {visibleFragments.map(({ fragment: f, realIndex }, visIdx) => {
           const seam = seamAfterVisible.get(f.fragment_id);
           const seamKey = seam ? `${seam.leftVisibleFragmentId}-${seam.rightVisibleFragmentId}` : null;
