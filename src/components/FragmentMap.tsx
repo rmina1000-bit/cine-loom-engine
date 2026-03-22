@@ -20,6 +20,7 @@ interface FragmentMapProps {
   onRestoreFragment: (f: Fragment) => void;
   onMoveToHold: (f: Fragment) => void;
   onBoundaryDragChange?: (leftFrag: Fragment | null, rightFrag: Fragment | null) => void;
+  onTrashRestore?: (f: Fragment) => void;
 }
 
 const MIN_FRAGMENT_DURATION = 15;
