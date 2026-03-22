@@ -72,7 +72,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-3">
-          <h3 className="text-xs font-semibold text-foreground tracking-wide">Original Panorama</h3>
+          <h3 className="text-xs font-semibold text-foreground tracking-wide">원재료 지도</h3>
           {/* Source tabs */}
           <div className="flex gap-0.5">
             {sources.map((s) => (
@@ -100,7 +100,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
             }`}
         >
           {intelligenceOn ? <Eye size={12} /> : <EyeOff size={12} />}
-          Intelligence
+          정보
         </button>
       </div>
 
