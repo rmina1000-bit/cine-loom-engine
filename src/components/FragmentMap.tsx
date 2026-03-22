@@ -230,7 +230,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     : [];
 
   return (
-    <div className="flex flex-col bg-card/30 rounded-lg border border-border/10"
+    <div className="flex flex-col bg-card/50 rounded-lg border border-border/20"
       onDragOver={(e) => {
         const data = e.dataTransfer.types.includes("application/ccut-trash-restore");
         if (data) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
