@@ -60,7 +60,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold text-foreground tracking-wide">Hold Area</h3>
+          <h3 className="text-xs font-semibold text-foreground tracking-wide">보관 구역</h3>
           <span className="text-[10px] text-muted-foreground">({fragments.length} excluded)</span>
         </div>
         <span className="text-[10px] text-muted-foreground">
