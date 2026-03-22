@@ -230,7 +230,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     : [];
 
   return (
-    <div className="flex flex-col bg-card/30 rounded-lg border border-border/10"
+    <div className="flex flex-col bg-card/50 rounded-lg border border-border/20"
       onDragOver={(e) => {
         const data = e.dataTransfer.types.includes("application/ccut-trash-restore");
         if (data) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
@@ -244,10 +244,10 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-[10px] font-medium text-foreground/50 uppercase tracking-widest">조각맵</h3>
-          <span className="text-[9px] text-muted-foreground/35">
+          <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">조각맵</h3>
+          <span className="text-[9px] text-muted-foreground/40">
             {activeCount}{excludedCount > 0 ? ` · ${excludedCount}` : ""}
           </span>
         </div>

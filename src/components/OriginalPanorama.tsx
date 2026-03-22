@@ -68,11 +68,11 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
     boundaryHighlightIds ? boundaryHighlightIds.includes(fid) : false;
 
   return (
-    <div className="flex flex-col bg-card/30 rounded-lg overflow-hidden border border-border/10">
+    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden border border-border/20">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2.5">
-          <h3 className="text-[10px] font-medium text-foreground/50 uppercase tracking-widest">원본맵</h3>
+          <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">원본맵</h3>
           <div className="flex gap-px">
             {sources.map((s) => (
               <button
@@ -81,7 +81,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
                 className={`px-1.5 py-0.5 rounded-[3px] text-[9px] font-medium transition-all
                   ${s === activeSource
                     ? "bg-primary/15 text-primary/90"
-                    : "text-muted-foreground/50 hover:text-foreground/60 hover:bg-secondary/40"
+                    : "text-muted-foreground/60 hover:text-foreground/70 hover:bg-secondary/40"
                   }`}
               >
                 {s}
@@ -112,9 +112,11 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
             <div
               data-fid={f.fragment_id}
               className={`relative transition-all duration-150 ${
-                isBoundaryHighlighted(f.fragment_id)
-                  ? "ring-1 ring-primary/60 rounded-sm"
-                  : ""
+                highlightedFragmentId === f.fragment_id
+                  ? "ring-1 ring-primary/40 rounded-sm"
+                  : isBoundaryHighlighted(f.fragment_id)
+                    ? "ring-1 ring-primary/30 rounded-sm"
+                    : ""
               }`}
             >
               <FragmentTile
