@@ -68,11 +68,11 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
     boundaryHighlightIds ? boundaryHighlightIds.includes(fid) : false;
 
   return (
-    <div className="flex flex-col bg-card/30 rounded-lg overflow-hidden border border-border/10">
+    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden border border-border/20">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2.5">
-          <h3 className="text-[10px] font-medium text-foreground/50 uppercase tracking-widest">원본맵</h3>
+          <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">원본맵</h3>
           <div className="flex gap-px">
             {sources.map((s) => (
               <button
