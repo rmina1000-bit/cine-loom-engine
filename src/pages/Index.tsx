@@ -273,6 +273,10 @@ const Index: React.FC = () => {
           onFragmentClick={handleReservedClick}
           onRestoreFragment={handleRestoreFromHold}
           onDeleteFragment={handleDeleteFromHold}
+          deletedFragments={deletedFragments}
+          onRestoreToHold={handleRestoreToHold}
+          onRestoreToEdit={handleRestoreToEdit}
+          onEmptyTrash={handleEmptyTrash}
         />
       </div>
     </div>
