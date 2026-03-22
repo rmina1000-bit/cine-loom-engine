@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Upload, Send, Play, Film, Loader2, Check, MessageSquare, User, Bot } from "lucide-react";
+import { Upload, Send, Play, Film, Loader2, Check, MessageSquare, User, Bot, Plus } from "lucide-react";
 import { Fragment, sourceVideos, formatDuration } from "@/data/fragmentData";
 import { getFragmentThumbnail } from "@/data/thumbnailMap";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -339,28 +339,49 @@ interface ChatBarProps {
   disabled?: boolean;
 }
 
-const ChatBar: React.FC<ChatBarProps> = ({ value, onChange, onSend, onKeyDown, disabled }) => (
-  <div className="px-3 py-2 border-t border-border/20">
-    <div className="flex items-center gap-2 bg-secondary rounded-xl px-3 py-2">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder="수정을 요청하거나 질문하세요..."
-        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none disabled:opacity-40"
-        disabled={disabled}
-      />
-      <button
-        onClick={onSend}
-        disabled={disabled || !value.trim()}
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex-shrink-0 disabled:opacity-30 disabled:pointer-events-none"
-      >
-        <Send size={14} />
-      </button>
+const ChatBar: React.FC<ChatBarProps> = ({ value, onChange, onSend, onKeyDown, disabled }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="px-3 py-2 border-t border-border/20">
+      <div className="flex items-center gap-2 bg-secondary rounded-xl px-3 py-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) console.log("Video selected:", file.name);
+            e.target.value = "";
+          }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex-shrink-0"
+        >
+          <Plus size={16} strokeWidth={2} />
+        </button>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="수정을 요청하거나 질문하세요..."
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none disabled:opacity-40"
+          disabled={disabled}
+        />
+        <button
+          onClick={onSend}
+          disabled={disabled || !value.trim()}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex-shrink-0 disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Send size={14} />
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface ProposalCardProps {
   proposal: ProposalOption;

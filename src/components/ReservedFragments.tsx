@@ -13,6 +13,7 @@ interface ReservedFragmentsProps {
   selectedFragmentId: string | null;
   onFragmentClick: (f: Fragment) => void;
   onRestoreFragment: (f: Fragment) => void;
+  onDeleteFragment?: (f: Fragment) => void;
 }
 
 const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
@@ -20,22 +21,38 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
   selectedFragmentId,
   onFragmentClick,
   onRestoreFragment,
+  onDeleteFragment,
 }) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [dragging, setDragging] = useState<string | null>(null);
+  const [trashHover, setTrashHover] = useState(false);
   const dragOffset = useRef<Position>({ x: 0, y: 0 });
+  const trashRef = useRef<HTMLDivElement>(null);
 
   const getPosition = (fragId: string, index: number): Position => {
     if (positions[fragId]) return positions[fragId];
     return { x: 12 + (index % 5) * 80, y: 8 + Math.floor(index / 5) * 68 };
   };
 
+  const isOverTrash = useCallback((clientX: number, clientY: number) => {
+    if (!trashRef.current) return false;
+    const rect = trashRef.current.getBoundingClientRect();
+    const pad = 14;
+    return (
+      clientX >= rect.left - pad &&
+      clientX <= rect.right + pad &&
+      clientY >= rect.top - pad &&
+      clientY <= rect.bottom + pad
+    );
+  }, []);
+
   const handleMouseDown = useCallback((e: React.MouseEvent, fragId: string) => {
     e.preventDefault();
     const boardRect = boardRef.current?.getBoundingClientRect();
     if (!boardRect) return;
-    const pos = positions[fragId] || getPosition(fragId, fragments.findIndex(f => f.fragment_id === fragId));
+    const idx = fragments.findIndex(f => f.fragment_id === fragId);
+    const pos = positions[fragId] || getPosition(fragId, idx);
     dragOffset.current = {
       x: e.clientX - boardRect.left - pos.x,
       y: e.clientY - boardRect.top - pos.y,
@@ -49,15 +66,27 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
     const x = e.clientX - boardRect.left - dragOffset.current.x;
     const y = e.clientY - boardRect.top - dragOffset.current.y;
     setPositions(prev => ({ ...prev, [dragging]: { x, y } }));
-  }, [dragging]);
+    setTrashHover(isOverTrash(e.clientX, e.clientY));
+  }, [dragging, isOverTrash]);
 
   const handleMouseUp = useCallback(() => {
+    if (dragging && trashHover && onDeleteFragment) {
+      const frag = fragments.find(f => f.fragment_id === dragging);
+      if (frag) {
+        onDeleteFragment(frag);
+        setPositions(prev => {
+          const next = { ...prev };
+          delete next[dragging];
+          return next;
+        });
+      }
+    }
     setDragging(null);
-  }, []);
+    setTrashHover(false);
+  }, [dragging, trashHover, onDeleteFragment, fragments]);
 
   return (
     <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden relative">
-      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold text-foreground tracking-wide">보류맵</h3>
@@ -65,13 +94,12 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
         </div>
       </div>
 
-      {/* Freeform board */}
       <div
         ref={boardRef}
         className="relative min-h-[120px] select-none"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={() => { setDragging(null); setTrashHover(false); }}
         style={{ cursor: dragging ? "grabbing" : "default" }}
       >
         {fragments.map((f, index) => {
@@ -107,12 +135,20 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
           </p>
         )}
 
-        {/* Trash icon — bare, no background */}
-        <Trash2
-          size={16}
-          className="absolute bottom-2 right-2 text-muted-foreground/40 z-40"
-          strokeWidth={1.5}
-        />
+        {/* Trash drop zone */}
+        <div
+          ref={trashRef}
+          className="absolute bottom-2 right-2 z-40"
+        >
+          <Trash2
+            size={16}
+            className={`transition-all duration-150 ${
+              trashHover ? "text-red-500" : "text-muted-foreground/40"
+            }`}
+            strokeWidth={1.5}
+            style={{ transform: trashHover ? "scale(1.15)" : "scale(1)" }}
+          />
+        </div>
       </div>
     </div>
   );
