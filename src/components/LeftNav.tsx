@@ -18,20 +18,19 @@ const projects = [
 const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
   return (
     <div className="w-[220px] flex flex-col bg-[hsl(228_14%_8%)] h-full flex-shrink-0 border-r border-border/50">
-      {/* Logo — flush against first menu */}
-      <div className="px-5 pt-4 pb-1 flex items-center gap-2">
-        <span className="text-primary font-bold text-base tracking-wider">CC</span>
-        <span className="text-foreground/50 font-medium text-base tracking-wider">UT</span>
+      {/* Logo — flush */}
+      <div className="px-5 pt-4 pb-0">
+        <span className="text-primary font-bold text-base tracking-wider">CCUT</span>
       </div>
 
       {/* Archive + SNS Upload */}
-      <div className="px-2 flex flex-col gap-0.5">
+      <div className="px-2 mt-1 flex flex-col gap-0.5">
         <button
           onClick={() => onItemClick("archive")}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100
             ${activeItem === "archive"
               ? "bg-secondary text-foreground"
-              : "text-muted-foreground/60 hover:text-foreground/70 hover:bg-secondary/40"
+              : "text-foreground/60 hover:text-foreground/80 hover:bg-secondary/40"
             }`}
         >
           <Archive size={15} strokeWidth={1.5} />
@@ -42,7 +41,7 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100
             ${activeItem === "upload"
               ? "bg-secondary text-foreground"
-              : "text-muted-foreground/60 hover:text-foreground/70 hover:bg-secondary/40"
+              : "text-foreground/60 hover:text-foreground/80 hover:bg-secondary/40"
             }`}
         >
           <Upload size={15} strokeWidth={1.5} />
@@ -52,12 +51,12 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
 
       {/* Projects section */}
       <div className="px-3 mt-3">
-        <span className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-widest px-2">
+        <span className="text-[11px] font-medium text-foreground/40 uppercase tracking-widest px-2">
           프로젝트
         </span>
       </div>
 
-      <ScrollArea className="flex-1 mt-1 px-2">
+      <ScrollArea className="flex-1 mt-1 px-2 min-h-0">
         <div className="flex flex-col gap-0.5">
           {projects.map((proj) => {
             const isActive = activeItem === proj.id;
@@ -68,14 +67,14 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
                 className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors duration-100 group
                   ${isActive
                     ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground/80"
+                    : "text-foreground/70 hover:bg-secondary/50 hover:text-foreground/90"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Clapperboard size={14} className={isActive ? "text-primary" : "text-muted-foreground/50"} strokeWidth={1.5} />
+                  <Clapperboard size={14} className={isActive ? "text-primary" : "text-foreground/50"} strokeWidth={1.5} />
                   <span className="text-[13px] font-normal truncate flex-1">{proj.name}</span>
                 </div>
-                <span className="text-[11px] text-muted-foreground/50 ml-[26px] block mt-0.5">
+                <span className="text-[11px] text-foreground/40 ml-[26px] block mt-0.5">
                   {proj.date} · {proj.count}개 영상
                 </span>
               </button>
@@ -84,17 +83,14 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
         </div>
       </ScrollArea>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
       {/* Bottom: Account + Settings */}
-      <div className="px-2 pb-3 flex flex-col gap-0.5">
+      <div className="px-2 pb-3 pt-1 flex flex-col gap-0.5 border-t border-border/20">
         <button
           onClick={() => onItemClick("account")}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100
             ${activeItem === "account"
               ? "bg-secondary text-foreground"
-              : "text-muted-foreground/60 hover:text-foreground/70 hover:bg-secondary/40"
+              : "text-foreground/60 hover:text-foreground/80 hover:bg-secondary/40"
             }`}
         >
           <User size={15} strokeWidth={1.5} />
@@ -105,7 +101,7 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100
             ${activeItem === "settings"
               ? "bg-secondary text-foreground"
-              : "text-muted-foreground/60 hover:text-foreground/70 hover:bg-secondary/40"
+              : "text-foreground/60 hover:text-foreground/80 hover:bg-secondary/40"
             }`}
         >
           <Settings size={15} strokeWidth={1.5} />
