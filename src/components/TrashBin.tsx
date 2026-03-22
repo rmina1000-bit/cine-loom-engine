@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Fragment } from "@/data/fragmentData";
 import { getFragmentThumbnail } from "@/data/thumbnailMap";
 import { Trash2, X, Eraser, GripVertical } from "lucide-react";
@@ -32,6 +32,49 @@ const TrashBin: React.FC<TrashBinProps> = ({
   const [dropTarget, setDropTarget] = useState<"hold" | "edit" | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
 
+  // Draggable window state
+  const [windowPos, setWindowPos] = useState<{ x: number; y: number } | null>(null);
+  const [isWindowDragging, setIsWindowDragging] = useState(false);
+  const windowDragOffset = useRef({ x: 0, y: 0 });
+
+  // Initialize position when opening
+  useEffect(() => {
+    if (isOpen && !windowPos) {
+      setWindowPos({
+        x: window.innerWidth - 344,
+        y: window.innerHeight - 400,
+      });
+    }
+  }, [isOpen]);
+
+  // Window drag handlers
+  const handleTitleBarMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!windowRef.current) return;
+    const rect = windowRef.current.getBoundingClientRect();
+    windowDragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setIsWindowDragging(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isWindowDragging) return;
+    const handleMove = (e: MouseEvent) => {
+      setWindowPos({
+        x: Math.max(0, Math.min(window.innerWidth - 320, e.clientX - windowDragOffset.current.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 60, e.clientY - windowDragOffset.current.y)),
+      });
+    };
+    const handleUp = () => setIsWindowDragging(false);
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+    };
+  }, [isWindowDragging]);
+
+  // Fragment drag-to-restore: use native drag
   const handleDragStart = useCallback((e: React.DragEvent, frag: Fragment) => {
     e.dataTransfer.setData("text/plain", frag.fragment_id);
     e.dataTransfer.setData("application/ccut-trash-restore", JSON.stringify(frag));
@@ -81,37 +124,46 @@ const TrashBin: React.FC<TrashBinProps> = ({
         )}
       </div>
 
-      {/* Trash window — floating dialog */}
+      {/* Trash window — draggable floating dialog */}
       {isOpen && (
-        <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)}>
+        <div
+          className="fixed inset-0 z-[100]"
+          onClick={() => setIsOpen(false)}
+          style={{ pointerEvents: isWindowDragging ? "none" : "auto" }}
+        >
           <div
             ref={windowRef}
             className="absolute bg-[hsl(228,14%,10%)] border border-border/40 rounded-xl shadow-2xl overflow-hidden"
             style={{
               width: 320,
-              right: 24,
-              bottom: 24,
+              left: windowPos?.x ?? "auto",
+              top: windowPos?.y ?? "auto",
               maxHeight: "60vh",
+              pointerEvents: "auto",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Title bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/20 bg-[hsl(228,14%,8%)]">
+            {/* Title bar — draggable */}
+            <div
+              className="flex items-center justify-between px-4 py-2.5 border-b border-border/20 bg-[hsl(228,14%,8%)] cursor-move select-none"
+              onMouseDown={handleTitleBarMouseDown}
+            >
               <div className="flex items-center gap-2">
                 <Trash2 size={13} className="text-muted-foreground" strokeWidth={1.5} />
                 <span className="text-[12px] font-medium text-foreground">휴지통</span>
                 <span className="text-[10px] text-muted-foreground">({deletedFragments.length})</span>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-secondary/50"
               >
                 <X size={13} />
               </button>
             </div>
 
-            {/* Drop zones hint */}
-            {draggedFrag && (
+            {/* Drop zones — always visible when items exist */}
+            {deletedFragments.length > 0 && (
               <div className="flex gap-2 px-3 py-2 bg-secondary/20 border-b border-border/10">
                 <div
                   className={`flex-1 text-center py-2 rounded-lg border border-dashed text-[10px] font-medium transition-colors ${
