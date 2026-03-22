@@ -146,13 +146,34 @@ const Index: React.FC = () => {
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
-  // Delete from Hold Area permanently
+  // Deleted fragments (trash bin state)
+  const [deletedFragments, setDeletedFragments] = useState<Fragment[]>([]);
+
+  // Delete from Hold Area — move to trash (not permanent)
   const handleDeleteFromHold = useCallback((f: Fragment) => {
     setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+    setDeletedFragments((prev) => [...prev, f]);
     if (selectedFragment?.fragment_id === f.fragment_id) {
       setSelectedFragment(null);
     }
   }, [selectedFragment]);
+
+  // Restore from trash to hold area
+  const handleRestoreToHold = useCallback((f: Fragment) => {
+    setDeletedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+    setReservedFragments((prev) => [...prev, f]);
+  }, []);
+
+  // Restore from trash to edit structure
+  const handleRestoreToEdit = useCallback((f: Fragment) => {
+    setDeletedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+    setEditFragments((prev) => [...prev, f]);
+  }, []);
+
+  // Empty trash permanently
+  const handleEmptyTrash = useCallback(() => {
+    setDeletedFragments([]);
+  }, []);
 
   // Boundary drag: source recall + override sync
   const handleBoundaryDragChange = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
