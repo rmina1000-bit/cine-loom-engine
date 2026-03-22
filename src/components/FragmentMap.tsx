@@ -238,7 +238,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
           </span>
         </div>
         <span className="text-[10px] text-muted-foreground">
-          Drag boundaries to redistribute · Drag fragments to reorder
+          경계 드래그로 조각 균선 · 조각 드래그로 순서 변경
         </span>
       </div>
 
