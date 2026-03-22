@@ -264,6 +264,7 @@ const Index: React.FC = () => {
             onRestoreFragment={handleRestoreFragment}
             onMoveToHold={handleMoveToHold}
             onBoundaryDragChange={handleBoundaryDragChange}
+            onTrashRestore={handleRestoreToEdit}
           />
         </div>
 

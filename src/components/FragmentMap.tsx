@@ -239,8 +239,8 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
         const data = e.dataTransfer.getData("application/ccut-trash-restore");
         if (!data) return;
         e.preventDefault();
-        // Trash restore is handled by parent via onFragmentsChange — we need to bubble up
-        // Actually handled in Index.tsx via the dedicated handler
+        const frag = JSON.parse(data) as Fragment;
+        onTrashRestore?.(frag);
       }}
     >
       {/* Header */}
