@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Fragment } from "@/data/fragmentData";
 import { getFragmentThumbnail } from "@/data/thumbnailMap";
-import { Trash2, X, Eraser, GripVertical } from "lucide-react";
+import { Trash2, X, GripVertical } from "lucide-react";
 
 interface TrashBinProps {
   deletedFragments: Fragment[];
@@ -28,8 +28,6 @@ const TrashBin: React.FC<TrashBinProps> = ({
   onEmptyTrash,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [draggedFrag, setDraggedFrag] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<"hold" | "edit" | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
 
   // Draggable window state
@@ -37,7 +35,6 @@ const TrashBin: React.FC<TrashBinProps> = ({
   const [isWindowDragging, setIsWindowDragging] = useState(false);
   const windowDragOffset = useRef({ x: 0, y: 0 });
 
-  // Initialize position when opening
   useEffect(() => {
     if (isOpen && !windowPos) {
       setWindowPos({
@@ -47,7 +44,6 @@ const TrashBin: React.FC<TrashBinProps> = ({
     }
   }, [isOpen]);
 
-  // Window drag handlers
   const handleTitleBarMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -74,32 +70,21 @@ const TrashBin: React.FC<TrashBinProps> = ({
     };
   }, [isWindowDragging]);
 
-  // Fragment drag-to-restore: use native drag
+  // Handle restoring a fragment via context menu on right-click or double-click
+  const handleRestoreToHoldClick = useCallback((f: Fragment) => {
+    onRestoreToHold(f);
+  }, [onRestoreToHold]);
+
+  const handleRestoreToEditClick = useCallback((f: Fragment) => {
+    onRestoreToEdit(f);
+  }, [onRestoreToEdit]);
+
+  // Drag from trash - set data for external drop targets
   const handleDragStart = useCallback((e: React.DragEvent, frag: Fragment) => {
     e.dataTransfer.setData("text/plain", frag.fragment_id);
     e.dataTransfer.setData("application/ccut-trash-restore", JSON.stringify(frag));
     e.dataTransfer.effectAllowed = "move";
-    setDraggedFrag(frag.fragment_id);
   }, []);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggedFrag(null);
-    setDropTarget(null);
-  }, []);
-
-  const handleDropOnZone = useCallback((zone: "hold" | "edit", e: React.DragEvent) => {
-    e.preventDefault();
-    const data = e.dataTransfer.getData("application/ccut-trash-restore");
-    if (!data) return;
-    const frag = JSON.parse(data) as Fragment;
-    if (zone === "hold") {
-      onRestoreToHold(frag);
-    } else {
-      onRestoreToEdit(frag);
-    }
-    setDropTarget(null);
-    setDraggedFrag(null);
-  }, [onRestoreToHold, onRestoreToEdit]);
 
   return (
     <>
@@ -124,7 +109,7 @@ const TrashBin: React.FC<TrashBinProps> = ({
         )}
       </div>
 
-      {/* Trash window — draggable floating dialog */}
+      {/* Trash window */}
       {isOpen && (
         <div
           className="fixed inset-0 z-[100]"
@@ -135,69 +120,39 @@ const TrashBin: React.FC<TrashBinProps> = ({
             ref={windowRef}
             className="absolute bg-[hsl(228,14%,10%)] border border-border/40 rounded-xl shadow-2xl overflow-hidden"
             style={{
-              width: 320,
+              width: 300,
               left: windowPos?.x ?? "auto",
               top: windowPos?.y ?? "auto",
-              maxHeight: "60vh",
+              maxHeight: "55vh",
               pointerEvents: "auto",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Title bar — draggable */}
+            {/* Title bar */}
             <div
-              className="flex items-center justify-between px-4 py-2.5 border-b border-border/20 bg-[hsl(228,14%,8%)] cursor-move select-none"
+              className="flex items-center justify-between px-3 py-2 border-b border-border/20 bg-[hsl(228,14%,8%)] cursor-move select-none"
               onMouseDown={handleTitleBarMouseDown}
             >
               <div className="flex items-center gap-2">
-                <Trash2 size={13} className="text-muted-foreground" strokeWidth={1.5} />
-                <span className="text-[12px] font-medium text-foreground">휴지통</span>
-                <span className="text-[10px] text-muted-foreground">({deletedFragments.length})</span>
+                <Trash2 size={12} className="text-muted-foreground/60" strokeWidth={1.5} />
+                <span className="text-[11px] font-medium text-foreground/80">휴지통</span>
+                <span className="text-[10px] text-muted-foreground/50">({deletedFragments.length})</span>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-secondary/50"
+                className="text-muted-foreground/50 hover:text-foreground transition-colors p-0.5 rounded hover:bg-secondary/50"
               >
-                <X size={13} />
+                <X size={12} />
               </button>
             </div>
 
-            {/* Drop zones — always visible when items exist */}
-            {deletedFragments.length > 0 && (
-              <div className="flex gap-2 px-3 py-2 bg-secondary/20 border-b border-border/10">
-                <div
-                  className={`flex-1 text-center py-2 rounded-lg border border-dashed text-[10px] font-medium transition-colors ${
-                    dropTarget === "hold"
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border/40 text-muted-foreground"
-                  }`}
-                  onDragOver={(e) => { e.preventDefault(); setDropTarget("hold"); }}
-                  onDragLeave={() => setDropTarget(null)}
-                  onDrop={(e) => handleDropOnZone("hold", e)}
-                >
-                  → 보류맵
-                </div>
-                <div
-                  className={`flex-1 text-center py-2 rounded-lg border border-dashed text-[10px] font-medium transition-colors ${
-                    dropTarget === "edit"
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border/40 text-muted-foreground"
-                  }`}
-                  onDragOver={(e) => { e.preventDefault(); setDropTarget("edit"); }}
-                  onDragLeave={() => setDropTarget(null)}
-                  onDrop={(e) => handleDropOnZone("edit", e)}
-                >
-                  → 조각맵
-                </div>
-              </div>
-            )}
-
             {/* Fragment list */}
-            <div className="overflow-y-auto" style={{ maxHeight: "calc(60vh - 100px)" }}>
+            <div className="overflow-y-auto" style={{ maxHeight: "calc(55vh - 80px)" }}>
               {deletedFragments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Trash2 size={24} className="text-muted-foreground/20" strokeWidth={1} />
-                  <p className="text-[11px] text-muted-foreground/50">비어 있음</p>
+                <div className="flex flex-col items-center justify-center py-8 gap-1.5">
+                  <Trash2 size={20} className="text-muted-foreground/15" strokeWidth={1} />
+                  <p className="text-[10px] text-muted-foreground/40">비어 있음</p>
                 </div>
               ) : (
                 deletedFragments.map((f) => (
@@ -205,32 +160,44 @@ const TrashBin: React.FC<TrashBinProps> = ({
                     key={f.fragment_id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, f)}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-2.5 px-3 py-2 hover:bg-secondary/30 transition-colors cursor-grab active:cursor-grabbing group ${
-                      draggedFrag === f.fragment_id ? "opacity-40" : ""
-                    }`}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/30 transition-colors cursor-grab active:cursor-grabbing group"
                   >
-                    <GripVertical size={10} className="text-muted-foreground/30 group-hover:text-muted-foreground/60 flex-shrink-0" />
-                    {/* Thumbnail */}
+                    <GripVertical size={9} className="text-muted-foreground/20 group-hover:text-muted-foreground/50 flex-shrink-0" />
                     <div
-                      className="w-10 h-6 rounded flex-shrink-0 bg-secondary"
+                      className="w-9 h-5.5 rounded flex-shrink-0 bg-secondary"
                       style={{
+                        width: 36, height: 22,
                         backgroundImage: `url(${getFragmentThumbnail(f.fragment_id, f.source_video)})`,
                         backgroundSize: "cover",
                         backgroundPosition: "center",
+                        borderRadius: 3,
                       }}
                     />
-                    <div className="flex-1 min-w-0">
-                      <span className={`text-[11px] font-medium ${sourceColors[f.source_video] || "text-foreground"}`}>
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                      <span className={`text-[10px] font-medium ${sourceColors[f.source_video] || "text-foreground"}`}>
                         {f.fragment_id}
                       </span>
-                      <span className="text-[10px] text-muted-foreground ml-1.5">
+                      <span className="text-[9px] text-muted-foreground/50">
                         {f.duration.toFixed(1)}s
                       </span>
                     </div>
-                    <span className="text-[9px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
-                      드래그로 복원
-                    </span>
+                    {/* Restore buttons */}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRestoreToHoldClick(f); }}
+                        className="text-[8px] px-1.5 py-0.5 rounded bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        title="보류맵으로 복원"
+                      >
+                        보류
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRestoreToEditClick(f); }}
+                        className="text-[8px] px-1.5 py-0.5 rounded bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        title="조각맵으로 복원"
+                      >
+                        편집
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -238,12 +205,12 @@ const TrashBin: React.FC<TrashBinProps> = ({
 
             {/* Footer */}
             {deletedFragments.length > 0 && (
-              <div className="px-3 py-2 border-t border-border/20 bg-[hsl(228,14%,8%)]">
+              <div className="px-3 py-2 border-t border-border/15 bg-[hsl(228,14%,8%)]">
                 <button
                   onClick={onEmptyTrash}
-                  className="w-full flex items-center justify-center gap-1.5 text-[10px] text-destructive hover:text-destructive/80 transition-colors py-1.5 rounded-lg hover:bg-destructive/5"
+                  className="w-full flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/60 hover:text-foreground/70 transition-colors py-1 rounded-lg hover:bg-secondary/30"
                 >
-                  <Eraser size={10} />
+                  <Trash2 size={9} strokeWidth={1.5} />
                   휴지통 비우기
                 </button>
               </div>
