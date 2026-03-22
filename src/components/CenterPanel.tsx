@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Upload, Send, Play, Film, Loader2, Check, MessageSquare, User, Bot } from "lucide-react";
+import { Upload, Send, Play, Film, Loader2, Check, MessageSquare, User, Bot, Plus } from "lucide-react";
 import { Fragment, sourceVideos, formatDuration } from "@/data/fragmentData";
 import { getFragmentThumbnail } from "@/data/thumbnailMap";
 import { ScrollArea } from "@/components/ui/scroll-area";
