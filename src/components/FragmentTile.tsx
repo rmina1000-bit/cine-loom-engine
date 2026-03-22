@@ -141,7 +141,7 @@ const FragmentTile: React.FC<FragmentTileProps> = ({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => { setIsHovering(false); }}
       className={`fragment-tile relative rounded-md cursor-pointer overflow-hidden flex-shrink-0
-        ${isSelected ? "fragment-glow border-primary/60" : isHighlighted ? "border-primary/30" : "border-border/30"}
+        ${isSelected ? "fragment-glow border-primary/50" : isHighlighted ? "border-foreground/25" : "border-border/20"}
         border`}
       animate={{
         scale: isHighlighted ? 1.02 : focusScale,
