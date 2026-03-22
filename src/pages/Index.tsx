@@ -32,7 +32,7 @@ const Index: React.FC = () => {
   });
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const leftNavWidth = 56;
+  const leftNavWidth = 220;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(centerWidth));
