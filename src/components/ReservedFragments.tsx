@@ -118,7 +118,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
         <div className="flex items-center gap-1.5">
           <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">보류맵</h3>
           {fragments.length > 0 && (
-            <span className="text-[9px] text-muted-foreground/35">{fragments.length}</span>
+            <span className="text-[9px] text-muted-foreground/40">{fragments.length}</span>
           )}
         </div>
       </div>
