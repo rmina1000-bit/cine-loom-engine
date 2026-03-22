@@ -81,7 +81,7 @@ const OriginalPanorama: React.FC<OriginalPanoramaProps> = ({
                 className={`px-1.5 py-0.5 rounded-[3px] text-[9px] font-medium transition-all
                   ${s === activeSource
                     ? "bg-primary/15 text-primary/90"
-                    : "text-muted-foreground/50 hover:text-foreground/60 hover:bg-secondary/40"
+                    : "text-muted-foreground/60 hover:text-foreground/70 hover:bg-secondary/40"
                   }`}
               >
                 {s}
