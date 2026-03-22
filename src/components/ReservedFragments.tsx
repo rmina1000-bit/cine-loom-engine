@@ -110,7 +110,7 @@ const ReservedFragments: React.FC<ReservedFragmentsProps> = ({
   }, [onRestoreToHold]);
 
   return (
-    <div className="flex flex-col bg-card/30 rounded-lg overflow-hidden relative border border-border/10"
+    <div className="flex flex-col bg-card/50 rounded-lg overflow-hidden relative border border-border/20"
       onDragOver={handleTrashDragOver}
       onDrop={handleTrashDrop}
     >
