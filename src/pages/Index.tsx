@@ -146,6 +146,14 @@ const Index: React.FC = () => {
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
+  // Delete from Hold Area permanently
+  const handleDeleteFromHold = useCallback((f: Fragment) => {
+    setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
+    if (selectedFragment?.fragment_id === f.fragment_id) {
+      setSelectedFragment(null);
+    }
+  }, [selectedFragment]);
+
   // Boundary drag: source recall + override sync
   const handleBoundaryDragChange = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
     if (!leftFrag || !rightFrag) {
