@@ -20,7 +20,10 @@ const LeftNav: React.FC<LeftNavProps> = ({ activeItem, onItemClick }) => {
     <div className="w-[220px] flex flex-col bg-[hsl(228_14%_8%)] h-full flex-shrink-0 border-r border-border/50">
       {/* Logo — flush */}
       <div className="px-5 pt-4 pb-0">
-        <span className="text-primary font-bold text-base tracking-wider">CCUT</span>
+        <span className="font-light text-[15px] tracking-[0.35em]">
+          <span className="bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">CC</span>
+          <span className="text-foreground/90">UT</span>
+        </span>
       </div>
 
       {/* Archive + SNS Upload */}
