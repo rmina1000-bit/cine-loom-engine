@@ -146,7 +146,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDraggingBar(barId);
-    boundaryDragRef.current = { startX: e.clientX, origA: durations[fragAId] ?? 0, origB: durations[fragBId] ?? 0, barId };
+    boundaryDragRef.current = { startX: e.clientX, origA: durations[fragAId] ?? 0, origB: durations[fragBId] ?? 0, fragAId, fragBId };
   }, [durations]);
 
   useEffect(() => {
@@ -159,16 +159,8 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
         const newA = boundaryDragRef.current.origA + delta;
         const newB = boundaryDragRef.current.origB - delta;
         if (newA >= MIN_DURATION && newB >= MIN_DURATION) {
-          setDurations(prev => {
-            if (boundaryDragRef.current.barId === 'left' && leftFrag && nextL) {
-              return { ...prev, [leftFrag.fragment_id]: newA, [nextL.fragment_id]: newB };
-            } else if (boundaryDragRef.current.barId === 'right' && prevR && rightFrag) {
-              return { ...prev, [prevR.fragment_id]: newA, [rightFrag.fragment_id]: newB };
-            } else if (boundaryDragRef.current.barId === 'single' && leftFrag && rightFrag) {
-              return { ...prev, [leftFrag.fragment_id]: newA, [rightFrag.fragment_id]: newB };
-            }
-            return prev;
-          });
+          const { fragAId, fragBId } = boundaryDragRef.current;
+          setDurations(prev => ({ ...prev, [fragAId]: newA, [fragBId]: newB }));
         }
       });
     };
