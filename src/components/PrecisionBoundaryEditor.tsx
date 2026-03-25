@@ -361,6 +361,64 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
           </div>
         </div>
 
+        {/* Proportion Bar (비례바) */}
+        <div className="px-4 pt-1 pb-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wider">비례바</span>
+            <span className="text-[8px] text-muted-foreground/30 font-mono">
+              {leftFrag.fragment_id} {formatDuration(leftDuration)} : {rightFrag.fragment_id} {formatDuration(rightDuration)}
+            </span>
+          </div>
+          <div
+            className="relative w-full rounded-md overflow-hidden border border-border/20 bg-background/30"
+            style={{ height: 28 }}
+          >
+            {/* Left segment */}
+            <div
+              className="absolute top-0 left-0 h-full bg-primary/20 transition-[width] duration-75"
+              style={{ width: `${(leftDuration / (leftDuration + rightDuration)) * 100}%` }}
+            >
+              <div className="flex items-center justify-center h-full">
+                <span className="text-[9px] font-mono font-semibold text-primary/80">{leftDuration}f</span>
+              </div>
+            </div>
+            {/* Right segment */}
+            <div
+              className="absolute top-0 right-0 h-full bg-accent/30 transition-[width] duration-75"
+              style={{ width: `${(rightDuration / (leftDuration + rightDuration)) * 100}%` }}
+            >
+              <div className="flex items-center justify-center h-full">
+                <span className="text-[9px] font-mono font-semibold text-foreground/50">{rightDuration}f</span>
+              </div>
+            </div>
+            {/* Draggable handle */}
+            <div
+              className={`absolute top-0 h-full cursor-col-resize z-10 flex items-center justify-center group
+                ${isDragging ? '' : 'hover:scale-x-110'}`}
+              style={{
+                left: `calc(${(leftDuration / (leftDuration + rightDuration)) * 100}% - 8px)`,
+                width: 16,
+              }}
+              onMouseDown={handleBoundaryMouseDown}
+            >
+              <div className={`w-[3px] h-[18px] rounded-full transition-all duration-100 ${
+                isDragging
+                  ? "bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.5)]"
+                  : "bg-primary/50 group-hover:bg-primary group-hover:shadow-[0_0_6px_hsl(var(--primary)/0.3)]"
+              }`} />
+            </div>
+            {/* Min markers */}
+            <div
+              className="absolute top-0 h-full border-l border-dashed border-destructive/20 pointer-events-none"
+              style={{ left: `${(MIN_DURATION / (leftDuration + rightDuration)) * 100}%` }}
+            />
+            <div
+              className="absolute top-0 h-full border-r border-dashed border-destructive/20 pointer-events-none"
+              style={{ right: `${(MIN_DURATION / (leftDuration + rightDuration)) * 100}%` }}
+            />
+          </div>
+        </div>
+
         {/* Frame-level controls */}
         <div className="px-4 pb-2">
           <div className="flex items-center justify-center gap-1">
