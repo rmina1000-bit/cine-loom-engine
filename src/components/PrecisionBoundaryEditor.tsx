@@ -67,6 +67,19 @@ interface DurationMap {
   [fragmentId: string]: number;
 }
 
+type BoundaryBarId = "single" | "left" | "right";
+
+interface BoundaryPair {
+  fragAId: string;
+  fragBId: string;
+}
+
+interface BoundaryPairMap {
+  single?: BoundaryPair;
+  left?: BoundaryPair;
+  right?: BoundaryPair;
+}
+
 const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   open,
   onOpenChange,
@@ -78,8 +91,11 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [draggingBar, setDraggingBar] = useState<string | null>(null);
-  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; fragAId: string; fragBId: string }>({ startX: 0, origA: 0, origB: 0, fragAId: '', fragBId: '' });
+  const [draggingBar, setDraggingBar] = useState<BoundaryBarId | null>(null);
+  const [leftBoundaryFrame, setLeftBoundaryFrame] = useState<number | null>(null);
+  const [rightBoundaryFrame, setRightBoundaryFrame] = useState<number | null>(null);
+  const [singleBoundaryFrame, setSingleBoundaryFrame] = useState<number | null>(null);
+  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; fragAId: string; fragBId: string; barId: BoundaryBarId } | null>(null);
   const rafId = useRef<number | null>(null);
 
   const leftFrag = target ? fragments[target.leftRealIndex] : null;
@@ -94,13 +110,38 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   const nextL = leftFrag ? next(leftFrag) : null;
   const prevR = rightFrag ? prev(rightFrag) : null;
 
+  const boundaryPairs = useMemo<BoundaryPairMap>(() => {
+    if (!leftFrag || !rightFrag) return {};
+
+    if (!isCrossSource) {
+      return {
+        single: {
+          fragAId: leftFrag.fragment_id,
+          fragBId: rightFrag.fragment_id,
+        },
+      };
+    }
+
+    const pairs: BoundaryPairMap = {};
+    if (nextL) {
+      pairs.left = { fragAId: leftFrag.fragment_id, fragBId: nextL.fragment_id };
+    }
+    if (prevR) {
+      pairs.right = { fragAId: prevR.fragment_id, fragBId: rightFrag.fragment_id };
+    }
+    return pairs;
+  }, [isCrossSource, leftFrag, rightFrag, nextL, prevR]);
+
   useEffect(() => {
     if (!target || !open || !leftFrag || !rightFrag) return;
     const map: DurationMap = {};
     railFragments.forEach(f => { map[f.fragment_id] = f.duration; });
     setDurations(map);
+    setSingleBoundaryFrame(isCrossSource ? null : map[leftFrag.fragment_id] ?? leftFrag.duration);
+    setLeftBoundaryFrame(isCrossSource && boundaryPairs.left ? map[boundaryPairs.left.fragAId] ?? leftFrag.duration : null);
+    setRightBoundaryFrame(isCrossSource && boundaryPairs.right ? map[boundaryPairs.right.fragAId] ?? rightFrag.duration : null);
     setPos(null);
-  }, [target, open, leftFrag, rightFrag, railFragments]);
+  }, [target, open, leftFrag, rightFrag, railFragments, isCrossSource, boundaryPairs]);
 
   const getDur = useCallback((f: Fragment) => durations[f.fragment_id] ?? f.duration, [durations]);
 
@@ -142,30 +183,52 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   }, [pos]);
 
   // Proportion bar drag
-  const handleBarMouseDown = useCallback((e: React.MouseEvent, fragAId: string, fragBId: string, barId: string) => {
+  const handleBarMouseDown = useCallback((e: React.MouseEvent, barId: BoundaryBarId) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const pair = boundaryPairs[barId];
+    if (!pair) return;
+
+    const origA = durations[pair.fragAId];
+    const origB = durations[pair.fragBId];
+    if (origA == null || origB == null) return;
+
     setDraggingBar(barId);
-    boundaryDragRef.current = { startX: e.clientX, origA: durations[fragAId] ?? 0, origB: durations[fragBId] ?? 0, fragAId, fragBId };
-  }, [durations]);
+    boundaryDragRef.current = {
+      startX: e.clientX,
+      origA,
+      origB,
+      fragAId: pair.fragAId,
+      fragBId: pair.fragBId,
+      barId,
+    };
+  }, [durations, boundaryPairs]);
 
   useEffect(() => {
     if (!draggingBar) return;
     const onMove = (e: MouseEvent) => {
+      if (!boundaryDragRef.current) return;
       if (rafId.current !== null) return;
       rafId.current = requestAnimationFrame(() => {
+        if (!boundaryDragRef.current) return;
         rafId.current = null;
-        const delta = Math.round((e.clientX - boundaryDragRef.current.startX) / 1.5);
-        const newA = boundaryDragRef.current.origA + delta;
-        const newB = boundaryDragRef.current.origB - delta;
+        const drag = boundaryDragRef.current;
+        const delta = Math.round((e.clientX - drag.startX) / 1.5);
+        const newA = drag.origA + delta;
+        const newB = drag.origB - delta;
         if (newA >= MIN_DURATION && newB >= MIN_DURATION) {
-          const { fragAId, fragBId } = boundaryDragRef.current;
+          const { fragAId, fragBId, barId } = drag;
           setDurations(prev => ({ ...prev, [fragAId]: newA, [fragBId]: newB }));
+          if (barId === "left") setLeftBoundaryFrame(newA);
+          if (barId === "right") setRightBoundaryFrame(newA);
+          if (barId === "single") setSingleBoundaryFrame(newA);
         }
       });
     };
     const onUp = () => {
       if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; }
+      boundaryDragRef.current = null;
       setDraggingBar(null);
     };
     document.addEventListener("mousemove", onMove);
@@ -178,36 +241,40 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+      boundaryDragRef.current = null;
     };
-  }, [draggingBar, leftFrag, rightFrag, nextL, prevR]);
+  }, [draggingBar]);
 
   if (!open || !target || !leftFrag || !rightFrag) return null;
 
   const totalDur = railFragments.reduce((s, f) => s + getDur(f), 0);
 
-  // Determine boundary info for each gap
-  const leftBlockFrags = isCrossSource
-    ? railFragments.filter(f => f.source_video === leftFrag.source_video)
-    : [];
-  const seamIdx = isCrossSource ? leftBlockFrags.length - 1 : -1;
-
-  type BoundaryInfo = { type: 'bar'; barId: string; fragA: Fragment; fragB: Fragment } | { type: 'seam' } | { type: 'context' };
+  type BoundaryInfo = { type: 'bar'; barId: BoundaryBarId; fragA: Fragment; fragB: Fragment } | { type: 'seam' } | { type: 'context' };
   const boundaries: BoundaryInfo[] = [];
+
+  const isPairMatch = (cur: Fragment, nxt: Fragment, pair?: BoundaryPair) => {
+    if (!pair) return false;
+    return cur.fragment_id === pair.fragAId && nxt.fragment_id === pair.fragBId;
+  };
+
   for (let i = 0; i < railFragments.length - 1; i++) {
     const cur = railFragments[i];
     const nxt = railFragments[i + 1];
+
     if (isCrossSource) {
-      if (i === seamIdx) {
+      const isCrossSourceSeam = cur.source_video !== nxt.source_video;
+      if (isCrossSourceSeam) {
         boundaries.push({ type: 'seam' });
+      } else if (isPairMatch(cur, nxt, boundaryPairs.left)) {
+        boundaries.push({ type: 'bar', barId: 'left', fragA: cur, fragB: nxt });
+      } else if (isPairMatch(cur, nxt, boundaryPairs.right)) {
+        boundaries.push({ type: 'bar', barId: 'right', fragA: cur, fragB: nxt });
       } else {
-        const barId = i < seamIdx ? 'left' : 'right';
-        boundaries.push({ type: 'bar', barId, fragA: cur, fragB: nxt });
+        boundaries.push({ type: 'context' });
       }
     } else {
-      // same-source: only L|R gets a bar, others are context
-      const isSeamGap = cur.fragment_id === leftFrag.fragment_id && nxt.fragment_id === rightFrag.fragment_id;
-      if (isSeamGap) {
-        boundaries.push({ type: 'bar', barId: 'single', fragA: leftFrag, fragB: rightFrag });
+      if (isPairMatch(cur, nxt, boundaryPairs.single)) {
+        boundaries.push({ type: 'bar', barId: 'single', fragA: cur, fragB: nxt });
       } else {
         boundaries.push({ type: 'context' });
       }
@@ -283,7 +350,14 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
                     <div
                       className="flex-shrink-0 flex items-center justify-center cursor-col-resize group relative"
                       style={{ width: 10 }}
-                      onMouseDown={(e) => handleBarMouseDown(e, boundary.fragA.fragment_id, boundary.fragB.fragment_id, boundary.barId)}
+                      onMouseDown={(e) => handleBarMouseDown(e, boundary.barId)}
+                      data-boundary-frame={
+                        boundary.barId === "left"
+                          ? leftBoundaryFrame ?? undefined
+                          : boundary.barId === "right"
+                            ? rightBoundaryFrame ?? undefined
+                            : singleBoundaryFrame ?? undefined
+                      }
                     >
                       <div className={`w-[2px] h-[55%] rounded-full transition-all duration-100 ${
                         draggingBar === boundary.barId
