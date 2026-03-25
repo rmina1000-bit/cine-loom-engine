@@ -199,18 +199,26 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
     : [];
   const seamIdx = isCrossSource ? leftBlockFrags.length - 1 : -1;
 
-  type BoundaryInfo = { type: 'bar'; barId: string; fragA: Fragment; fragB: Fragment } | { type: 'seam' };
+  type BoundaryInfo = { type: 'bar'; barId: string; fragA: Fragment; fragB: Fragment } | { type: 'seam' } | { type: 'context' };
   const boundaries: BoundaryInfo[] = [];
   for (let i = 0; i < railFragments.length - 1; i++) {
-    if (isCrossSource && i === seamIdx) {
-      boundaries.push({ type: 'seam' });
-    } else if (!isCrossSource) {
-      boundaries.push({ type: 'bar', barId: 'single', fragA: leftFrag, fragB: rightFrag });
+    const cur = railFragments[i];
+    const nxt = railFragments[i + 1];
+    if (isCrossSource) {
+      if (i === seamIdx) {
+        boundaries.push({ type: 'seam' });
+      } else {
+        const barId = i < seamIdx ? 'left' : 'right';
+        boundaries.push({ type: 'bar', barId, fragA: cur, fragB: nxt });
+      }
     } else {
-      const cur = railFragments[i];
-      const nxt = railFragments[i + 1];
-      const barId = i < seamIdx ? 'left' : 'right';
-      boundaries.push({ type: 'bar', barId, fragA: cur, fragB: nxt });
+      // same-source: only L|R gets a bar, others are context
+      const isSeamGap = cur.fragment_id === leftFrag.fragment_id && nxt.fragment_id === rightFrag.fragment_id;
+      if (isSeamGap) {
+        boundaries.push({ type: 'bar', barId: 'single', fragA: leftFrag, fragB: rightFrag });
+      } else {
+        boundaries.push({ type: 'context' });
+      }
     }
   }
 
@@ -295,6 +303,11 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
                   {boundary && boundary.type === 'seam' && (
                     <div className="flex-shrink-0 flex items-center justify-center" style={{ width: 12 }}>
                       <div className="h-full w-[2px] bg-[hsl(var(--ccut-amber)/0.35)]" />
+                    </div>
+                  )}
+                  {boundary && boundary.type === 'context' && (
+                    <div className="flex-shrink-0 flex items-center justify-center" style={{ width: 4 }}>
+                      <div className="h-[40%] w-[1px] bg-border/20" />
                     </div>
                   )}
                 </React.Fragment>
