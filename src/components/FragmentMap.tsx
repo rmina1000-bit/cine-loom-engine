@@ -1,13 +1,17 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Fragment } from "@/data/fragmentData";
 import FragmentTile from "./FragmentTile";
-import BoundaryPrecisionOverlay from "./BoundaryPrecisionOverlay";
-import { EyeOff, Eye } from "lucide-react";
+import { EyeOff } from "lucide-react";
 import {
   SyntheticCollapsedSeam,
-  PrecisionOverlayState,
   detectSyntheticSeams,
 } from "@/types/boundaryTypes";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface FragmentMapProps {
   fragments: Fragment[];
@@ -21,9 +25,8 @@ interface FragmentMapProps {
   onMoveToHold: (f: Fragment) => void;
   onBoundaryDragChange?: (leftFrag: Fragment | null, rightFrag: Fragment | null) => void;
   onTrashRestore?: (f: Fragment) => void;
+  onBoundaryClick?: (leftRealIndex: number, rightRealIndex: number) => void;
 }
-
-const MIN_FRAGMENT_DURATION = 15;
 
 const FragmentMap: React.FC<FragmentMapProps> = ({
   fragments,
@@ -37,26 +40,16 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   onMoveToHold,
   onBoundaryDragChange,
   onTrashRestore,
+  onBoundaryClick,
 }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-  // Boundary drag state (for normal non-seam boundaries)
-  const [boundaryDragIndex, setBoundaryDragIndex] = useState<number | null>(null);
-  const boundaryStartX = useRef(0);
-  const boundaryOrigLeft = useRef(0);
-  const boundaryOrigRight = useRef(0);
-
-  // Precision overlay state
-  const [precisionOverlay, setPrecisionOverlay] = useState<PrecisionOverlayState | null>(null);
-
-  // Synthetic seam hover state
+  const [hoveredBoundary, setHoveredBoundary] = useState<string | null>(null);
   const [hoveredSeamKey, setHoveredSeamKey] = useState<string | null>(null);
 
   // Detect synthetic collapsed seams
   const syntheticSeams = useMemo(() => detectSyntheticSeams(fragments), [fragments]);
 
-  // Build a map: for each visible fragment, find if a seam exists to its right
   const seamAfterVisible = useMemo(() => {
     const map = new Map<string, SyntheticCollapsedSeam>();
     for (const seam of syntheticSeams) {
@@ -65,7 +58,6 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     return map;
   }, [syntheticSeams]);
 
-  // Visible fragments (non-excluded) for board rendering
   const visibleFragments = useMemo(() =>
     fragments
       .map((f, i) => ({ fragment: f, realIndex: i }))
@@ -73,7 +65,7 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     [fragments]
   );
 
-  // Reorder drag handlers (operate on full fragment array)
+  // Reorder drag handlers
   const handleDragStart = useCallback((e: React.DragEvent, fragId: string) => {
     e.dataTransfer.setData("text/plain", fragId);
     e.dataTransfer.effectAllowed = "move";
@@ -105,114 +97,21 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
     setDragOverIndex(null);
   }, []);
 
-  // Normal boundary drag (between two adjacent visible non-excluded fragments, no seam)
-  const handleBoundaryMouseDown = useCallback((e: React.MouseEvent, leftRealIdx: number, rightRealIdx: number) => {
+  // Boundary click → open Precision Boundary Editor
+  const handleBoundaryClick = useCallback((e: React.MouseEvent, leftRealIdx: number, rightRealIdx: number) => {
     e.preventDefault();
     e.stopPropagation();
+    onBoundaryClick?.(leftRealIdx, rightRealIdx);
+  }, [onBoundaryClick]);
 
-    setBoundaryDragIndex(leftRealIdx);
-    boundaryStartX.current = e.clientX;
-    boundaryOrigLeft.current = fragments[leftRealIdx].duration;
-    boundaryOrigRight.current = fragments[rightRealIdx].duration;
-    onBoundaryDragChange?.(fragments[leftRealIdx], fragments[rightRealIdx]);
-  }, [fragments, onBoundaryDragChange]);
-
-  // Synthetic seam click → open precision overlay
+  // Seam click → open Precision Boundary Editor for the seam pair
   const handleSeamClick = useCallback((e: React.MouseEvent, seam: SyntheticCollapsedSeam) => {
     e.preventDefault();
     e.stopPropagation();
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const chainIndices: number[] = [];
-    for (let i = seam.leftRealIndex; i <= seam.rightRealIndex; i++) {
-      chainIndices.push(i);
-    }
-    setPrecisionOverlay({ seam, chainRealIndices: chainIndices, anchorRect: rect });
-  }, []);
+    onBoundaryClick?.(seam.leftRealIndex, seam.rightRealIndex);
+  }, [onBoundaryClick]);
 
-  // RAF-throttled boundary drag
-  const rafId = useRef<number | null>(null);
-  const pendingDelta = useRef<number>(0);
-
-  useEffect(() => {
-    if (boundaryDragIndex === null) return;
-
-    // Find the right fragment index (next non-excluded after boundaryDragIndex)
-    let rightIdx = boundaryDragIndex + 1;
-    // In normal drag mode, we're dragging between two directly adjacent visible fragments
-    // so rightIdx should be the fragment right after
-
-    const handleMouseMove = (e: MouseEvent) => {
-      pendingDelta.current = e.clientX - boundaryStartX.current;
-      if (rafId.current !== null) return;
-      rafId.current = requestAnimationFrame(() => {
-        rafId.current = null;
-        const deltaFrames = Math.round(pendingDelta.current / 0.7);
-        const newLeftDur = boundaryOrigLeft.current + deltaFrames;
-        const newRightDur = boundaryOrigRight.current - deltaFrames;
-        if (newLeftDur < MIN_FRAGMENT_DURATION || newRightDur < MIN_FRAGMENT_DURATION) return;
-
-        const newFrags = [...fragments];
-        const leftFrag = { ...newFrags[boundaryDragIndex!] };
-        const rightFrag = { ...newFrags[rightIdx] };
-
-        leftFrag.duration = newLeftDur;
-        leftFrag.end_frame = leftFrag.start_frame + newLeftDur;
-        rightFrag.duration = newRightDur;
-        rightFrag.start_frame = rightFrag.end_frame - newRightDur;
-
-        newFrags[boundaryDragIndex!] = leftFrag;
-        newFrags[rightIdx] = rightFrag;
-        onFragmentsChange(newFrags);
-      });
-    };
-
-    const handleMouseUp = () => {
-      if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-      setBoundaryDragIndex(null);
-      onBoundaryDragChange?.(null, null);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-    };
-  }, [boundaryDragIndex, fragments, onFragmentsChange, onBoundaryDragChange]);
-
-  // Precision overlay: commit on mouseUp only (board stays stable during drag)
-  const handleOverlayCommit = useCallback((leftRealIdx: number, rightRealIdx: number, deltaFrames: number) => {
-    const left = fragments[leftRealIdx];
-    const right = fragments[rightRealIdx];
-    if (!left || !right) return;
-
-    const newLeftDur = left.duration + deltaFrames;
-    const newRightDur = right.duration - deltaFrames;
-    if (newLeftDur < MIN_FRAGMENT_DURATION || newRightDur < MIN_FRAGMENT_DURATION) return;
-
-    const newFrags = [...fragments];
-    newFrags[leftRealIdx] = { ...left, duration: newLeftDur, end_frame: left.start_frame + newLeftDur };
-    newFrags[rightRealIdx] = { ...right, duration: newRightDur, start_frame: right.end_frame - newRightDur };
-    onFragmentsChange(newFrags);
-  }, [fragments, onFragmentsChange]);
-
-  // Source recall during overlay drag (lightweight, no board mutation)
-  const handleOverlaySourceRecall = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
-    onBoundaryDragChange?.(leftFrag, rightFrag);
-  }, [onBoundaryDragChange]);
-
-  const handleOverlayClose = useCallback(() => {
-    setPrecisionOverlay(null);
-    onBoundaryDragChange?.(null, null);
-  }, [onBoundaryDragChange]);
-
-  // Compute boundary positions for ruler
+  // Boundary ruler
   const boundaries: number[] = [];
   let runningFrame = 0;
   for (const f of fragments) {
@@ -224,166 +123,160 @@ const FragmentMap: React.FC<FragmentMapProps> = ({
   const activeCount = visibleFragments.length;
   const excludedCount = fragments.length - activeCount;
 
-  // Chain fragments for overlay
-  const overlayChainFragments = precisionOverlay
-    ? precisionOverlay.chainRealIndices.map(i => fragments[i])
-    : [];
-
   return (
-    <div className="flex flex-col bg-card/50 rounded-lg border border-border/20"
-      onDragOver={(e) => {
-        const data = e.dataTransfer.types.includes("application/ccut-trash-restore");
-        if (data) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
-      }}
-      onDrop={(e) => {
-        const data = e.dataTransfer.getData("application/ccut-trash-restore");
-        if (!data) return;
-        e.preventDefault();
-        const frag = JSON.parse(data) as Fragment;
-        onTrashRestore?.(frag);
-      }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">조각맵</h3>
-          <span className="text-[9px] text-muted-foreground/40">
-            {activeCount}{excludedCount > 0 ? ` · ${excludedCount}` : ""}
-          </span>
+    <TooltipProvider delayDuration={300}>
+      <div className="flex flex-col bg-card/50 rounded-lg border border-border/20"
+        onDragOver={(e) => {
+          const data = e.dataTransfer.types.includes("application/ccut-trash-restore");
+          if (data) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+        }}
+        onDrop={(e) => {
+          const data = e.dataTransfer.getData("application/ccut-trash-restore");
+          if (!data) return;
+          e.preventDefault();
+          const frag = JSON.parse(data) as Fragment;
+          onTrashRestore?.(frag);
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">조각맵</h3>
+            <span className="text-[9px] text-muted-foreground/40">
+              {activeCount}{excludedCount > 0 ? ` · ${excludedCount}` : ""}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Fragment board */}
-      <div className="flex flex-wrap items-start content-start gap-0 px-2 py-1.5 min-h-[160px]">
-        {visibleFragments.map(({ fragment: f, realIndex }, visIdx) => {
-          const seam = seamAfterVisible.get(f.fragment_id);
-          const seamKey = seam ? `${seam.leftVisibleFragmentId}-${seam.rightVisibleFragmentId}` : null;
+        {/* Fragment board */}
+        <div className="flex flex-wrap items-start content-start gap-0 px-2 py-1.5 min-h-[160px]">
+          {visibleFragments.map(({ fragment: f, realIndex }, visIdx) => {
+            const seam = seamAfterVisible.get(f.fragment_id);
+            const seamKey = seam ? `${seam.leftVisibleFragmentId}-${seam.rightVisibleFragmentId}` : null;
+            const nextVisible = visIdx < visibleFragments.length - 1 ? visibleFragments[visIdx + 1] : null;
+            const isDirectlyAdjacent = nextVisible && nextVisible.realIndex === realIndex + 1;
+            const boundaryKey = `${realIndex}-${nextVisible?.realIndex}`;
 
-          // Next visible fragment (for normal boundary)
-          const nextVisible = visIdx < visibleFragments.length - 1 ? visibleFragments[visIdx + 1] : null;
-          // Is the next visible fragment directly adjacent (no excluded in between)?
-          const isDirectlyAdjacent = nextVisible && nextVisible.realIndex === realIndex + 1;
-
-          return (
-            <React.Fragment key={f.fragment_id}>
-              {/* Drop indicator */}
-              {dragOverIndex === realIndex && draggedId !== f.fragment_id && (
-                <div className="w-0.5 h-[72px] bg-primary rounded-full mx-0.5 flex-shrink-0 self-stretch" />
-              )}
-
-              <div
-                draggable={boundaryDragIndex === null}
-                onDragStart={(e) => handleDragStart(e, f.fragment_id)}
-                onDragOver={(e) => handleDragOver(e, realIndex)}
-                onDragLeave={() => setDragOverIndex(null)}
-                onDrop={(e) => handleDrop(e, realIndex)}
-                onDragEnd={handleDragEnd}
-                className="flex items-stretch relative"
-                style={{ opacity: draggedId === f.fragment_id ? 0.4 : 1 }}
-              >
-                <div>
-                  <FragmentTile
-                    fragment={f}
-                    isSelected={selectedFragmentId === f.fragment_id}
-                    isHighlighted={false}
-                    isExpanded={expandedFragmentId === f.fragment_id}
-                    hasActiveSelection={!!selectedFragmentId}
-                    onClick={() => onFragmentClick(f)}
-                    onDoubleClick={() => onFragmentDoubleClick(f)}
-                    widthScale={0.7}
-                    variant="edit"
-                  />
-                </div>
-
-                {/* Exclude/Restore toggle on selected */}
-                {selectedFragmentId === f.fragment_id && (
-                  <button
-                    className="fragment-tile absolute top-1 right-1 z-30 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
-                    title="Exclude from render"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onExcludeFragment(f);
-                    }}
-                  >
-                    <EyeOff size={12} />
-                  </button>
+            return (
+              <React.Fragment key={f.fragment_id}>
+                {dragOverIndex === realIndex && draggedId !== f.fragment_id && (
+                  <div className="w-0.5 h-[72px] bg-primary rounded-full mx-0.5 flex-shrink-0 self-stretch" />
                 )}
 
-                {/* After this fragment: either a normal boundary or a synthetic seam */}
-                {nextVisible && (
-                  seam ? (
-                    // Synthetic collapsed seam indicator
-                    <div
-                      className={`synthetic-seam self-stretch flex-shrink-0 flex items-center justify-center cursor-pointer group relative ${
-                        hoveredSeamKey === seamKey ? "synthetic-seam-hover" : ""
-                      }`}
-                      style={{ width: 10 }}
-                      title={`${seam.hiddenExcludedFragmentIds.length} excluded fragment${seam.hiddenExcludedFragmentIds.length > 1 ? "s" : ""} · Click for precision`}
-                      onMouseEnter={() => setHoveredSeamKey(seamKey)}
-                      onMouseLeave={() => setHoveredSeamKey(null)}
-                      onClick={(e) => handleSeamClick(e, seam)}
-                    >
-                      {/* Seam visual: dotted line indicating hidden structure */}
-                      <div className={`h-full flex flex-col items-center justify-center gap-[3px] transition-colors duration-75`}>
-                        <div className={`w-[3px] h-[3px] rounded-full ${hoveredSeamKey === seamKey ? "bg-[hsl(var(--ccut-amber))]" : "bg-muted-foreground/25"}`} />
-                        <div className={`w-[3px] h-[3px] rounded-full ${hoveredSeamKey === seamKey ? "bg-[hsl(var(--ccut-amber))]" : "bg-muted-foreground/25"}`} />
-                        <div className={`w-[3px] h-[3px] rounded-full ${hoveredSeamKey === seamKey ? "bg-[hsl(var(--ccut-amber))]" : "bg-muted-foreground/25"}`} />
-                      </div>
-                      {/* Hover tooltip count */}
-                      {hoveredSeamKey === seamKey && (
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[7px] text-[hsl(var(--ccut-amber))] font-medium whitespace-nowrap bg-card/90 px-1 py-0.5 rounded border border-border/20">
-                          {seam.hiddenExcludedFragmentIds.length} hidden
-                        </div>
-                      )}
-                    </div>
-                  ) : isDirectlyAdjacent ? (
-                    // Normal boundary handle (directly adjacent, no excluded between)
-                    <div
-                      className={`boundary-handle self-stretch ${boundaryDragIndex === realIndex ? "boundary-handle-active" : ""}`}
-                      title={`Boundary F${boundaries[realIndex + 1]} · Drag to redistribute`}
-                      onMouseDown={(e) => handleBoundaryMouseDown(e, realIndex, nextVisible.realIndex)}
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, f.fragment_id)}
+                  onDragOver={(e) => handleDragOver(e, realIndex)}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDrop={(e) => handleDrop(e, realIndex)}
+                  onDragEnd={handleDragEnd}
+                  className="flex items-stretch relative"
+                  style={{ opacity: draggedId === f.fragment_id ? 0.4 : 1 }}
+                >
+                  <div>
+                    <FragmentTile
+                      fragment={f}
+                      isSelected={selectedFragmentId === f.fragment_id}
+                      isHighlighted={false}
+                      isExpanded={expandedFragmentId === f.fragment_id}
+                      hasActiveSelection={!!selectedFragmentId}
+                      onClick={() => onFragmentClick(f)}
+                      onDoubleClick={() => onFragmentDoubleClick(f)}
+                      widthScale={0.7}
+                      variant="edit"
                     />
-                  ) : null
+                  </div>
+
+                  {/* Exclude toggle */}
+                  {selectedFragmentId === f.fragment_id && (
+                    <button
+                      className="fragment-tile absolute top-1 right-1 z-30 p-1 rounded-full bg-card border border-border/50 hover:bg-destructive/20 hover:border-destructive/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                      title="Exclude from render"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onExcludeFragment(f);
+                      }}
+                    >
+                      <EyeOff size={12} />
+                    </button>
+                  )}
+
+                  {/* Boundary / Seam — now click-to-open, NOT drag */}
+                  {nextVisible && (
+                    seam ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={`synthetic-seam self-stretch flex-shrink-0 flex items-center justify-center cursor-pointer group relative ${
+                              hoveredSeamKey === seamKey ? "synthetic-seam-hover" : ""
+                            }`}
+                            style={{ width: 10 }}
+                            onMouseEnter={() => setHoveredSeamKey(seamKey)}
+                            onMouseLeave={() => setHoveredSeamKey(null)}
+                            onClick={(e) => handleSeamClick(e, seam)}
+                          >
+                            <div className="h-full flex flex-col items-center justify-center gap-[3px] transition-colors duration-75">
+                              <div className={`w-[3px] h-[3px] rounded-full ${hoveredSeamKey === seamKey ? "bg-[hsl(var(--ccut-amber))]" : "bg-muted-foreground/25"}`} />
+                              <div className={`w-[3px] h-[3px] rounded-full ${hoveredSeamKey === seamKey ? "bg-[hsl(var(--ccut-amber))]" : "bg-muted-foreground/25"}`} />
+                              <div className={`w-[3px] h-[3px] rounded-full ${hoveredSeamKey === seamKey ? "bg-[hsl(var(--ccut-amber))]" : "bg-muted-foreground/25"}`} />
+                            </div>
+                            {hoveredSeamKey === seamKey && (
+                              <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[7px] text-[hsl(var(--ccut-amber))] font-medium whitespace-nowrap bg-card/90 px-1 py-0.5 rounded border border-border/20">
+                                {seam.hiddenExcludedFragmentIds.length} hidden
+                              </div>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-[9px]">
+                          경계 편집 열기
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : isDirectlyAdjacent ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={`boundary-link self-stretch flex-shrink-0 cursor-pointer group ${
+                              hoveredBoundary === boundaryKey ? "boundary-link-hover" : ""
+                            }`}
+                            style={{ width: 6 }}
+                            onMouseEnter={() => setHoveredBoundary(boundaryKey)}
+                            onMouseLeave={() => setHoveredBoundary(null)}
+                            onClick={(e) => handleBoundaryClick(e, realIndex, nextVisible.realIndex)}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-[9px]">
+                          비례바 정밀편집 열기
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* Boundary ruler */}
+        <div className="px-2 pb-1.5">
+          <div className="flex items-center h-3">
+            {visibleFragments.map(({ fragment: f, realIndex }, i) => (
+              <div
+                key={f.fragment_id}
+                className="flex items-center justify-between h-full text-[7px] text-muted-foreground/40 border-t border-border/20"
+                style={{ width: Math.max(48, f.duration * 0.7) }}
+              >
+                <span className="pl-0.5">F{boundaries[realIndex]}</span>
+                {i === visibleFragments.length - 1 && (
+                  <span className="pr-0.5">F{boundaries[realIndex + 1]}</span>
                 )}
               </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
-
-      {/* Boundary ruler (visible fragments only) */}
-      <div className="px-2 pb-1.5">
-        <div className="flex items-center h-3">
-          {visibleFragments.map(({ fragment: f, realIndex }, i) => (
-            <div
-              key={f.fragment_id}
-              className="flex items-center justify-between h-full text-[7px] text-muted-foreground/40 border-t border-border/20"
-              style={{ width: Math.max(48, f.duration * 0.7) }}
-            >
-              <span className="pl-0.5">F{boundaries[realIndex]}</span>
-              {i === visibleFragments.length - 1 && (
-                <span className="pr-0.5">F{boundaries[realIndex + 1]}</span>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-
-      {/* Precision overlay */}
-      {precisionOverlay && (
-        <BoundaryPrecisionOverlay
-          seam={precisionOverlay.seam}
-          chainFragments={overlayChainFragments}
-          chainRealIndices={precisionOverlay.chainRealIndices}
-          anchorRect={precisionOverlay.anchorRect}
-          onBoundaryCommit={handleOverlayCommit}
-          onSourceRecall={handleOverlaySourceRecall}
-          onClose={handleOverlayClose}
-        />
-      )}
-    </div>
+    </TooltipProvider>
   );
 };
 
