@@ -17,22 +17,57 @@ interface PrecisionBoundaryEditorProps {
 }
 
 const MIN_DURATION = 15;
+const MAX_VISIBLE = 4;
+const DEFAULT_VISIBLE = 3;
 
-/** Get up to 2 fragments from source: [prev?, self] or [self, next?] — max 4 total */
-function getSourceSlice(frag: Fragment, side: "left" | "right"): Fragment[] {
+function prev(frag: Fragment): Fragment | null {
   const sourceFrags = allFragments[frag.source_video] || [];
   const idx = sourceFrags.findIndex(f => f.fragment_id === frag.fragment_id);
-  if (idx < 0) return [frag];
-  if (side === "left") {
-    // target + one context before
+  return idx > 0 ? sourceFrags[idx - 1] : null;
+}
+
+function next(frag: Fragment): Fragment | null {
+  const sourceFrags = allFragments[frag.source_video] || [];
+  const idx = sourceFrags.findIndex(f => f.fragment_id === frag.fragment_id);
+  return idx >= 0 && idx < sourceFrags.length - 1 ? sourceFrags[idx + 1] : null;
+}
+
+function originalIndex(frag: Fragment): number {
+  const sourceFrags = allFragments[frag.source_video] || [];
+  return sourceFrags.findIndex(f => f.fragment_id === frag.fragment_id);
+}
+
+function uniquePush(list: Fragment[], item: Fragment | null) {
+  if (!item) return;
+  if (!list.find(f => f.fragment_id === item.fragment_id)) {
+    list.push(item);
+  }
+}
+
+function selectContextFragments(L: Fragment, R: Fragment, expanded = false): Fragment[] {
+  const visibleCount = expanded ? MAX_VISIBLE : DEFAULT_VISIBLE;
+  const isSameSource = L.source_video === R.source_video;
+
+  if (isSameSource) {
+    // Build ordered window from source: [prev(L), L, R, next(R)]
+    const candidates = [prev(L), L, R, next(R)].filter(Boolean) as Fragment[];
+    candidates.sort((a, b) => originalIndex(a) - originalIndex(b));
     const result: Fragment[] = [];
-    if (idx > 0) result.push(sourceFrags[idx - 1]);
-    result.push(sourceFrags[idx]);
+    for (const item of candidates) {
+      uniquePush(result, item);
+      if (result.length >= visibleCount) break;
+    }
     return result;
   } else {
-    // target + one context after
-    const result: Fragment[] = [sourceFrags[idx]];
-    if (idx < sourceFrags.length - 1) result.push(sourceFrags[idx + 1]);
+    // Cross-source: start with L, R then add direct candidates by priority
+    const result: Fragment[] = [];
+    uniquePush(result, L);
+    uniquePush(result, R);
+    const directCandidates = [next(L), prev(R), prev(L), next(R)];
+    for (const item of directCandidates) {
+      if (result.length >= visibleCount) break;
+      uniquePush(result, item);
+    }
     return result;
   }
 }
@@ -62,18 +97,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   // Build panorama rail: max 4 fragments from source context
   const railFragments = useMemo(() => {
     if (!leftFrag || !rightFrag) return [];
-    const leftSlice = getSourceSlice(leftFrag, "left");
-    const rightSlice = getSourceSlice(rightFrag, "right");
-    // Deduplicate (same-source adjacent might overlap)
-    const seen = new Set<string>();
-    const result: Fragment[] = [];
-    for (const f of [...leftSlice, ...rightSlice]) {
-      if (!seen.has(f.fragment_id)) {
-        seen.add(f.fragment_id);
-        result.push(f);
-      }
-    }
-    return result.slice(0, 4);
+    return selectContextFragments(leftFrag, rightFrag, false);
   }, [leftFrag, rightFrag]);
 
   // Initialize durations
