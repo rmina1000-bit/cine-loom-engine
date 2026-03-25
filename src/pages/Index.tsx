@@ -4,6 +4,7 @@ import CenterPanel from "@/components/CenterPanel";
 import OriginalPanorama from "@/components/OriginalPanorama";
 import FragmentMap from "@/components/FragmentMap";
 import ReservedFragments from "@/components/ReservedFragments";
+import PrecisionBoundaryEditor, { BoundaryEditorTarget } from "@/components/PrecisionBoundaryEditor";
 import { Fragment, initialEditFragments, initialReservedFragments } from "@/data/fragmentData";
 
 const STORAGE_KEY = "ccut-center-width";
@@ -24,6 +25,10 @@ const Index: React.FC = () => {
   // Boundary drag source-recall state
   const [boundaryHighlightIds, setBoundaryHighlightIds] = useState<string[]>([]);
   const [fragmentOverrides, setFragmentOverrides] = useState<Map<string, Fragment>>(new Map());
+
+  // Precision Boundary Editor state
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorTarget, setEditorTarget] = useState<BoundaryEditorTarget | null>(null);
 
   // Splitter state
   const [centerWidth, setCenterWidth] = useState<number>(() => {
@@ -108,30 +113,22 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
-  // Exclude from edit structure: toggle excluded flag (structurally preserved for boundaries)
   const handleExcludeFromEdit = useCallback((f: Fragment) => {
     setEditFragments((prev) =>
       prev.map((fr) =>
-        fr.fragment_id === f.fragment_id
-          ? { ...fr, excluded: true }
-          : fr
+        fr.fragment_id === f.fragment_id ? { ...fr, excluded: true } : fr
       )
     );
-    // Keep selection so user sees the excluded state
   }, []);
 
-  // Restore excluded fragment back to active render
   const handleRestoreFragment = useCallback((f: Fragment) => {
     setEditFragments((prev) =>
       prev.map((fr) =>
-        fr.fragment_id === f.fragment_id
-          ? { ...fr, excluded: false }
-          : fr
+        fr.fragment_id === f.fragment_id ? { ...fr, excluded: false } : fr
       )
     );
   }, []);
 
-  // Move to Hold Area (fully remove from edit structure to reserved)
   const handleMoveToHold = useCallback((f: Fragment) => {
     setEditFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setReservedFragments((prev) => [...prev, { ...f, excluded: false }]);
@@ -140,16 +137,13 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
-  // Restore from Hold Area (re-add to end of edit structure)
   const handleRestoreFromHold = useCallback((f: Fragment) => {
     setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
-  // Deleted fragments (trash bin state)
   const [deletedFragments, setDeletedFragments] = useState<Fragment[]>([]);
 
-  // Delete from Hold Area — move to trash (not permanent)
   const handleDeleteFromHold = useCallback((f: Fragment) => {
     setReservedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setDeletedFragments((prev) => [...prev, f]);
@@ -158,24 +152,21 @@ const Index: React.FC = () => {
     }
   }, [selectedFragment]);
 
-  // Restore from trash to hold area
   const handleRestoreToHold = useCallback((f: Fragment) => {
     setDeletedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setReservedFragments((prev) => [...prev, f]);
   }, []);
 
-  // Restore from trash to edit structure
   const handleRestoreToEdit = useCallback((f: Fragment) => {
     setDeletedFragments((prev) => prev.filter((fr) => fr.fragment_id !== f.fragment_id));
     setEditFragments((prev) => [...prev, f]);
   }, []);
 
-  // Empty trash permanently
   const handleEmptyTrash = useCallback(() => {
     setDeletedFragments([]);
   }, []);
 
-  // Boundary drag: source recall + override sync
+  // Boundary drag: source recall (kept for compatibility but no direct editing)
   const handleBoundaryDragChange = useCallback((leftFrag: Fragment | null, rightFrag: Fragment | null) => {
     if (!leftFrag || !rightFrag) {
       setBoundaryHighlightIds([]);
@@ -186,7 +177,6 @@ const Index: React.FC = () => {
     setBoundaryHighlightIds([leftFrag.fragment_id, rightFrag.fragment_id]);
   }, []);
 
-  // Keep overrides in sync with editFragments during boundary drag
   useEffect(() => {
     if (boundaryHighlightIds.length === 0) return;
     const overrides = new Map<string, Fragment>();
@@ -197,9 +187,18 @@ const Index: React.FC = () => {
     setFragmentOverrides(overrides);
   }, [editFragments, boundaryHighlightIds]);
 
-  // Global click-to-dismiss: clicking empty space restores default state
+  // Open Precision Boundary Editor
+  const handleOpenBoundaryEditor = useCallback((leftRealIndex: number, rightRealIndex: number) => {
+    setEditorTarget({ leftRealIndex, rightRealIndex });
+    setEditorOpen(true);
+  }, []);
+
+  // Apply changes from the editor
+  const handleEditorApply = useCallback((updatedFragments: Fragment[]) => {
+    setEditFragments(updatedFragments);
+  }, []);
+
   const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
-    // Only dismiss if clicking directly on a background container, not a fragment
     const target = e.target as HTMLElement;
     if (target.closest(".fragment-tile")) return;
     setSelectedFragment(null);
@@ -265,6 +264,7 @@ const Index: React.FC = () => {
             onMoveToHold={handleMoveToHold}
             onBoundaryDragChange={handleBoundaryDragChange}
             onTrashRestore={handleRestoreToEdit}
+            onBoundaryClick={handleOpenBoundaryEditor}
           />
         </div>
 
@@ -280,6 +280,15 @@ const Index: React.FC = () => {
           onEmptyTrash={handleEmptyTrash}
         />
       </div>
+
+      {/* Precision Boundary Editor Modal */}
+      <PrecisionBoundaryEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        fragments={editFragments}
+        target={editorTarget}
+        onApply={handleEditorApply}
+      />
     </div>
   );
 };
