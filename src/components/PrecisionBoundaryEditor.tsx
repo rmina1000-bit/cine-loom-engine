@@ -114,7 +114,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   // Build panorama rail: max 4 fragments from source context
   const railFragments = useMemo(() => {
     if (!leftFrag || !rightFrag) return [];
-    return selectContextFragments(leftFrag, rightFrag, false);
+    return selectContextFragments(leftFrag, rightFrag);
   }, [leftFrag, rightFrag]);
 
   // Initialize durations
