@@ -42,49 +42,30 @@ function uniquePush(list: Fragment[], item: Fragment | null) {
   }
 }
 
-/**
- * v2 Selection & Placement Formula
- * 
- * SELECTION (what to pick):
- *   same-source:  S = {prev(L), L, R, next(R)} \ {null}
- *   cross-source: S = {L, next(L), prev(R), R} \ {null}
- * 
- * PLACEMENT (how to order):
- *   same-source:  sortByOriginalIndex(S)
- *   cross-source: sortByIdx([L, next(L)]) ⊕ sortByIdx([prev(R), R])
- * 
- * Max 4 fragments. Deterministic: same seam → same result.
- */
 function selectContextFragments(L: Fragment, R: Fragment): Fragment[] {
   const isSameSource = L.source_video === R.source_video;
-
   if (isSameSource) {
-    // Selection: {prev(L), L, R, next(R)} \ {null}
     const selected = [prev(L), L, R, next(R)].filter(Boolean) as Fragment[];
-    // Placement: sort by original source index, deduplicate
     const result: Fragment[] = [];
     selected
       .sort((a, b) => originalIndex(a) - originalIndex(b))
       .forEach(item => uniquePush(result, item));
     return result;
   } else {
-    // Selection & Placement:
-    // leftBlock  = sortByIdx([L, next(L)] \ {null})
-    // rightBlock = sortByIdx([prev(R), R] \ {null})
-    // result = leftBlock ⊕ rightBlock
-    const leftBlock = [L, next(L)]
-      .filter(Boolean) as Fragment[];
+    const leftBlock = [L, next(L)].filter(Boolean) as Fragment[];
     leftBlock.sort((a, b) => originalIndex(a) - originalIndex(b));
-
-    const rightBlock = [prev(R), R]
-      .filter(Boolean) as Fragment[];
+    const rightBlock = [prev(R), R].filter(Boolean) as Fragment[];
     rightBlock.sort((a, b) => originalIndex(a) - originalIndex(b));
-
     const result: Fragment[] = [];
     leftBlock.forEach(item => uniquePush(result, item));
     rightBlock.forEach(item => uniquePush(result, item));
     return result;
   }
+}
+
+// Duration state for up to 4 fragments
+interface DurationMap {
+  [fragmentId: string]: number;
 }
 
 const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
@@ -94,122 +75,137 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   target,
   onApply,
 }) => {
-  const [leftDuration, setLeftDuration] = useState(0);
-  const [rightDuration, setRightDuration] = useState(0);
-  // Draggable window position
+  const [durations, setDurations] = useState<DurationMap>({});
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  // Boundary drag
-  const [isDragging, setIsDragging] = useState(false);
-  const boundaryDragRef = useRef({ startX: 0, origLeft: 0, origRight: 0 });
+  // Which bar is being dragged: 'left' | 'right' | 'single' | null
+  const [draggingBar, setDraggingBar] = useState<string | null>(null);
+  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; barId: string }>({ startX: 0, origA: 0, origB: 0, barId: '' });
   const rafId = useRef<number | null>(null);
 
   const leftFrag = target ? fragments[target.leftRealIndex] : null;
   const rightFrag = target ? fragments[target.rightRealIndex] : null;
   const isCrossSource = leftFrag && rightFrag ? leftFrag.source_video !== rightFrag.source_video : false;
 
-  // Build panorama rail: max 4 fragments from source context
   const railFragments = useMemo(() => {
     if (!leftFrag || !rightFrag) return [];
     return selectContextFragments(leftFrag, rightFrag);
   }, [leftFrag, rightFrag]);
 
-  // Initialize durations
+  // For cross-source, identify the 4 fragments
+  const nextL = leftFrag ? next(leftFrag) : null;
+  const prevR = rightFrag ? prev(rightFrag) : null;
+
+  // Initialize durations for all rail fragments
   useEffect(() => {
     if (!target || !open || !leftFrag || !rightFrag) return;
-    setLeftDuration(leftFrag.duration);
-    setRightDuration(rightFrag.duration);
-    setPos(null); // reset position on open
-  }, [target, open, leftFrag, rightFrag]);
+    const map: DurationMap = {};
+    railFragments.forEach(f => { map[f.fragment_id] = f.duration; });
+    setDurations(map);
+    setPos(null);
+  }, [target, open, leftFrag, rightFrag, railFragments]);
 
-  const hasChanges = leftFrag && rightFrag
-    ? leftDuration !== leftFrag.duration || rightDuration !== rightFrag.duration
-    : false;
+  const getDur = useCallback((f: Fragment) => durations[f.fragment_id] ?? f.duration, [durations]);
+
+  const setDur = useCallback((fragId: string, val: number) => {
+    setDurations(prev => ({ ...prev, [fragId]: val }));
+  }, []);
+
+  const hasChanges = useMemo(() => {
+    return railFragments.some(f => (durations[f.fragment_id] ?? f.duration) !== f.duration);
+  }, [railFragments, durations]);
 
   const handleReset = useCallback(() => {
-    if (leftFrag) setLeftDuration(leftFrag.duration);
-    if (rightFrag) setRightDuration(rightFrag.duration);
-  }, [leftFrag, rightFrag]);
+    const map: DurationMap = {};
+    railFragments.forEach(f => { map[f.fragment_id] = f.duration; });
+    setDurations(map);
+  }, [railFragments]);
 
   const handleApply = useCallback(() => {
     if (!target || !leftFrag || !rightFrag) return;
     const updated = [...fragments];
-    updated[target.leftRealIndex] = {
-      ...leftFrag,
-      duration: leftDuration,
-      end_frame: leftFrag.start_frame + leftDuration,
-    };
-    updated[target.rightRealIndex] = {
-      ...rightFrag,
-      duration: rightDuration,
-      start_frame: rightFrag.end_frame - rightDuration,
-    };
+    // Apply all changed durations
+    railFragments.forEach(rf => {
+      const newDur = durations[rf.fragment_id] ?? rf.duration;
+      const idx = updated.findIndex(f => f.fragment_id === rf.fragment_id);
+      if (idx >= 0 && newDur !== rf.duration) {
+        updated[idx] = {
+          ...updated[idx],
+          duration: newDur,
+          end_frame: updated[idx].start_frame + newDur,
+        };
+      }
+    });
     onApply(updated);
     onOpenChange(false);
-  }, [target, fragments, leftFrag, rightFrag, leftDuration, rightDuration, onApply, onOpenChange]);
+  }, [target, fragments, railFragments, durations, leftFrag, rightFrag, onApply, onOpenChange]);
 
-  // Frame step controls
-  const adjustBoundary = useCallback((delta: number) => {
-    const newLeft = leftDuration + delta;
-    const newRight = rightDuration - delta;
-    if (newLeft >= MIN_DURATION && newRight >= MIN_DURATION) {
-      setLeftDuration(newLeft);
-      setRightDuration(newRight);
+  // Adjust a specific pair boundary
+  const adjustPairBoundary = useCallback((fragAId: string, fragBId: string, delta: number) => {
+    const curA = durations[fragAId] ?? 0;
+    const curB = durations[fragBId] ?? 0;
+    const newA = curA + delta;
+    const newB = curB - delta;
+    if (newA >= MIN_DURATION && newB >= MIN_DURATION) {
+      setDurations(prev => ({ ...prev, [fragAId]: newA, [fragBId]: newB }));
     }
-  }, [leftDuration, rightDuration]);
+  }, [durations]);
 
   // --- Window drag ---
   const handleHeaderMouseDown = useCallback((e: React.MouseEvent) => {
-    // Don't drag on buttons
     if ((e.target as HTMLElement).closest("button")) return;
     e.preventDefault();
-    const rect = panelRef.current?.getBoundingClientRect();
     const currentX = pos?.x ?? 0;
     const currentY = pos?.y ?? 0;
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: currentX, origY: currentY };
-
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
-      setPos({ x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
+      setPos({ x: dragRef.current.origX + ev.clientX - dragRef.current.startX, y: dragRef.current.origY + ev.clientY - dragRef.current.startY });
     };
-    const onUp = () => {
-      dragRef.current = null;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
+    const onUp = () => { dragRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }, [pos]);
 
-  // --- Boundary drag on rail ---
-  const handleBoundaryMouseDown = useCallback((e: React.MouseEvent) => {
+  // --- Proportion bar drag ---
+  const handleBarMouseDown = useCallback((e: React.MouseEvent, fragAId: string, fragBId: string, barId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
-    boundaryDragRef.current = { startX: e.clientX, origLeft: leftDuration, origRight: rightDuration };
-  }, [leftDuration, rightDuration]);
+    setDraggingBar(barId);
+    boundaryDragRef.current = { startX: e.clientX, origA: durations[fragAId] ?? 0, origB: durations[fragBId] ?? 0, barId };
+  }, [durations]);
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!draggingBar) return;
     const onMove = (e: MouseEvent) => {
       if (rafId.current !== null) return;
       rafId.current = requestAnimationFrame(() => {
         rafId.current = null;
         const delta = Math.round((e.clientX - boundaryDragRef.current.startX) / 1.5);
-        const newL = boundaryDragRef.current.origLeft + delta;
-        const newR = boundaryDragRef.current.origRight - delta;
-        if (newL >= MIN_DURATION && newR >= MIN_DURATION) {
-          setLeftDuration(newL);
-          setRightDuration(newR);
+        const newA = boundaryDragRef.current.origA + delta;
+        const newB = boundaryDragRef.current.origB - delta;
+        if (newA >= MIN_DURATION && newB >= MIN_DURATION) {
+          // Find fragA and fragB ids from the bar context
+          // We stored origA/origB but need the fragment ids — they're encoded in the handler closure
+          // We'll use a different approach: store ids in ref
+          setDurations(prev => {
+            // We need to know which fragments. Let's use the barId to determine.
+            if (boundaryDragRef.current.barId === 'left' && leftFrag && nextL) {
+              return { ...prev, [leftFrag.fragment_id]: newA, [nextL.fragment_id]: newB };
+            } else if (boundaryDragRef.current.barId === 'right' && prevR && rightFrag) {
+              return { ...prev, [prevR.fragment_id]: newA, [rightFrag.fragment_id]: newB };
+            } else if (boundaryDragRef.current.barId === 'single' && leftFrag && rightFrag) {
+              return { ...prev, [leftFrag.fragment_id]: newA, [rightFrag.fragment_id]: newB };
+            }
+            return prev;
+          });
         }
       });
     };
     const onUp = () => {
       if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-      setIsDragging(false);
+      setDraggingBar(null);
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -222,26 +218,116 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
       document.body.style.userSelect = "";
       if (rafId.current !== null) cancelAnimationFrame(rafId.current);
     };
-  }, [isDragging]);
+  }, [draggingBar, leftFrag, rightFrag, nextL, prevR]);
 
   if (!open || !target || !leftFrag || !rightFrag) return null;
 
-  // Compute display durations for rail
-  const getDur = (f: Fragment) =>
-    f.fragment_id === leftFrag.fragment_id ? leftDuration
-    : f.fragment_id === rightFrag.fragment_id ? rightDuration
-    : f.duration;
   const totalDur = railFragments.reduce((s, f) => s + getDur(f), 0);
 
-  const leftDiff = leftDuration - leftFrag.duration;
-  const rightDiff = rightDuration - rightFrag.duration;
+  // Determine which pairs exist for proportion bars
+  // same-source: single bar between L and R
+  // cross-source: bar1 = L|next(L), bar2 = prev(R)|R, seam marker between blocks
+  const leftBlockFrags = isCrossSource
+    ? railFragments.filter(f => f.source_video === leftFrag.source_video)
+    : [];
+  const rightBlockFrags = isCrossSource
+    ? railFragments.filter(f => f.source_video === rightFrag.source_video)
+    : [];
+
+  // Render a proportion bar for a pair of fragments
+  const renderProportionBar = (fragA: Fragment, fragB: Fragment, barId: string, label: string) => {
+    const durA = getDur(fragA);
+    const durB = getDur(fragB);
+    const total = durA + durB;
+    const pctA = total > 0 ? (durA / total) * 100 : 50;
+    const diffA = durA - fragA.duration;
+    const diffB = durB - fragB.duration;
+    const isDraggingThis = draggingBar === barId;
+
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wider">{label}</span>
+          <span className="text-[8px] text-muted-foreground/30 font-mono">
+            {fragA.fragment_id} {formatDuration(durA)} : {fragB.fragment_id} {formatDuration(durB)}
+          </span>
+          {(diffA !== 0 || diffB !== 0) && (
+            <span className="text-[8px] ml-auto">
+              {diffA !== 0 && (
+                <span className={diffA > 0 ? "text-green-400/70" : "text-red-400/70"}>
+                  {fragA.fragment_id} {diffA > 0 ? "+" : ""}{diffA}f
+                </span>
+              )}
+              {diffA !== 0 && diffB !== 0 && <span className="text-muted-foreground/20 mx-1">·</span>}
+              {diffB !== 0 && (
+                <span className={diffB > 0 ? "text-green-400/70" : "text-red-400/70"}>
+                  {fragB.fragment_id} {diffB > 0 ? "+" : ""}{diffB}f
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+        {/* Bar */}
+        <div className="relative w-full rounded-md overflow-hidden border border-border/20 bg-background/30" style={{ height: 24 }}>
+          <div className="absolute top-0 left-0 h-full bg-primary/20 transition-[width] duration-75" style={{ width: `${pctA}%` }}>
+            <div className="flex items-center justify-center h-full">
+              <span className="text-[9px] font-mono font-semibold text-primary/80">{durA}f</span>
+            </div>
+          </div>
+          <div className="absolute top-0 right-0 h-full bg-accent/30 transition-[width] duration-75" style={{ width: `${100 - pctA}%` }}>
+            <div className="flex items-center justify-center h-full">
+              <span className="text-[9px] font-mono font-semibold text-foreground/50">{durB}f</span>
+            </div>
+          </div>
+          {/* Draggable handle */}
+          <div
+            className={`absolute top-0 h-full cursor-col-resize z-10 flex items-center justify-center group ${isDraggingThis ? '' : 'hover:scale-x-110'}`}
+            style={{ left: `calc(${pctA}% - 8px)`, width: 16 }}
+            onMouseDown={(e) => handleBarMouseDown(e, fragA.fragment_id, fragB.fragment_id, barId)}
+          >
+            <div className={`w-[3px] h-[16px] rounded-full transition-all duration-100 ${
+              isDraggingThis
+                ? "bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.5)]"
+                : "bg-primary/50 group-hover:bg-primary group-hover:shadow-[0_0_6px_hsl(var(--primary)/0.3)]"
+            }`} />
+          </div>
+          {/* Min markers */}
+          <div className="absolute top-0 h-full border-l border-dashed border-destructive/20 pointer-events-none" style={{ left: `${(MIN_DURATION / total) * 100}%` }} />
+          <div className="absolute top-0 h-full border-r border-dashed border-destructive/20 pointer-events-none" style={{ right: `${(MIN_DURATION / total) * 100}%` }} />
+        </div>
+        {/* Frame controls for this pair */}
+        <div className="flex items-center justify-center gap-1">
+          <button onClick={() => adjustPairBoundary(fragA.fragment_id, fragB.fragment_id, -5)}
+            className="px-1.5 py-0.5 rounded text-[8px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
+            <ChevronLeft size={9} className="inline -mt-px" />5f
+          </button>
+          <button onClick={() => adjustPairBoundary(fragA.fragment_id, fragB.fragment_id, -1)}
+            className="px-1.5 py-0.5 rounded text-[8px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
+            <ChevronLeft size={9} className="inline -mt-px" />1f
+          </button>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-secondary/20 border border-border/15 mx-0.5">
+            <span className="text-[8px] text-muted-foreground/40">경계</span>
+            <span className="text-[10px] font-mono font-semibold text-foreground/80">F{fragA.start_frame + getDur(fragA)}</span>
+          </div>
+          <button onClick={() => adjustPairBoundary(fragA.fragment_id, fragB.fragment_id, 1)}
+            className="px-1.5 py-0.5 rounded text-[8px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
+            1f<ChevronRight size={9} className="inline -mt-px" />
+          </button>
+          <button onClick={() => adjustPairBoundary(fragA.fragment_id, fragB.fragment_id, 5)}
+            className="px-1.5 py-0.5 rounded text-[8px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
+            5f<ChevronRight size={9} className="inline -mt-px" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Find the seam boundary index in railFragments (where left block ends and right block starts)
+  const seamIndex = isCrossSource ? leftBlockFrags.length - 1 : -1;
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/60" onClick={() => onOpenChange(false)} />
-
-      {/* Draggable panel */}
       <div
         ref={panelRef}
         className="fixed z-50 w-[580px] max-w-[95vw] rounded-xl border border-border/30 bg-card shadow-2xl overflow-hidden"
@@ -251,7 +337,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
           transform: "translate(-50%, -50%)",
         }}
       >
-        {/* Header — draggable */}
+        {/* Header */}
         <div
           className="flex items-center justify-between px-4 py-2.5 border-b border-border/15 cursor-grab active:cursor-grabbing select-none"
           onMouseDown={handleHeaderMouseDown}
@@ -262,26 +348,18 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
             <span className="text-[12px] font-semibold text-foreground/90">비례바 정밀편집</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Seam info */}
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-secondary/30 border border-border/15">
               <span className="text-[10px] font-medium text-foreground/70">{leftFrag.fragment_id}</span>
               {isCrossSource && (
-                <span className="text-[7px] px-1 py-px rounded bg-muted/40 text-muted-foreground/50 font-medium">
-                  {leftFrag.source_video}
-                </span>
+                <span className="text-[7px] px-1 py-px rounded bg-muted/40 text-muted-foreground/50 font-medium">{leftFrag.source_video}</span>
               )}
               <span className="text-muted-foreground/30 text-[10px]">↔</span>
               <span className="text-[10px] font-medium text-foreground/70">{rightFrag.fragment_id}</span>
               {isCrossSource && (
-                <span className="text-[7px] px-1 py-px rounded bg-muted/40 text-muted-foreground/50 font-medium">
-                  {rightFrag.source_video}
-                </span>
+                <span className="text-[7px] px-1 py-px rounded bg-muted/40 text-muted-foreground/50 font-medium">{rightFrag.source_video}</span>
               )}
             </div>
-            <button
-              onClick={() => onOpenChange(false)}
-              className="p-1 rounded-md hover:bg-secondary/50 text-muted-foreground/50 hover:text-foreground/70 transition-colors"
-            >
+            <button onClick={() => onOpenChange(false)} className="p-1 rounded-md hover:bg-secondary/50 text-muted-foreground/50 hover:text-foreground/70 transition-colors">
               <X size={14} />
             </button>
           </div>
@@ -295,14 +373,21 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
               const dur = getDur(f);
               const widthPct = totalDur > 0 ? (dur / totalDur) * 100 : 25;
               const isTarget = f.fragment_id === leftFrag.fragment_id || f.fragment_id === rightFrag.fragment_id;
-              const isSeamBoundary =
-                f.fragment_id === leftFrag.fragment_id &&
-                i < railFragments.length - 1 &&
-                railFragments[i + 1].fragment_id === rightFrag.fragment_id;
+
+              // Determine boundary type between this fragment and the next
+              let boundaryType: 'seam' | 'source-internal' | 'none' = 'none';
+              if (i < railFragments.length - 1) {
+                const cur = f;
+                const nxt = railFragments[i + 1];
+                if (isCrossSource && i === seamIndex) {
+                  boundaryType = 'seam'; // cross-source seam — non-draggable marker
+                } else {
+                  boundaryType = 'source-internal';
+                }
+              }
 
               return (
                 <React.Fragment key={f.fragment_id}>
-                  {/* Fragment strip */}
                   <div
                     className={`relative flex-shrink-0 overflow-hidden transition-opacity duration-150 ${!isTarget ? "opacity-35" : ""}`}
                     style={{ width: `${widthPct}%`, minWidth: 36 }}
@@ -311,49 +396,36 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40 pointer-events-none" />
                     <div className="relative z-10 flex flex-col justify-between h-full p-1.5">
                       <div className="flex items-center gap-1">
-                        <span className={`text-[10px] font-bold ${isTarget ? "text-foreground/95" : "text-foreground/40"}`}>
-                          {f.fragment_id}
-                        </span>
-                        {isCrossSource && isTarget && (
-                          <span className="text-[7px] px-1 py-px rounded bg-black/40 text-foreground/50 font-medium">
-                            {f.source_video}
-                          </span>
+                        <span className={`text-[10px] font-bold ${isTarget ? "text-foreground/95" : "text-foreground/40"}`}>{f.fragment_id}</span>
+                        {isCrossSource && (
+                          <span className="text-[7px] px-1 py-px rounded bg-black/40 text-foreground/50 font-medium">{f.source_video}</span>
                         )}
-                        {!isTarget && (
-                          <span className="text-[6px] text-muted-foreground/30 uppercase tracking-wider">ctx</span>
-                        )}
+                        {!isTarget && <span className="text-[6px] text-muted-foreground/30 uppercase tracking-wider">ctx</span>}
                       </div>
                       <div className="flex items-end justify-between">
-                        <span className={`text-[9px] ${isTarget ? "text-foreground/70 font-medium" : "text-foreground/35"}`}>
-                          {formatDuration(dur)}
-                        </span>
-                        <span className="text-[7px] text-foreground/20">
-                          F{f.start_frame}
-                        </span>
+                        <span className={`text-[9px] ${isTarget ? "text-foreground/70 font-medium" : "text-foreground/35"}`}>{formatDuration(dur)}</span>
+                        <span className="text-[7px] text-foreground/20">F{f.start_frame}</span>
                       </div>
                     </div>
-                    {isTarget && (
-                      <div className="absolute inset-0 border border-primary/25 pointer-events-none z-20" />
-                    )}
+                    {isTarget && <div className="absolute inset-0 border border-primary/25 pointer-events-none z-20" />}
                   </div>
 
                   {/* Boundary between strips */}
                   {i < railFragments.length - 1 && (
-                    <div
-                      className={`flex-shrink-0 flex items-center justify-center ${
-                        isSeamBoundary ? "cursor-col-resize group" : ""
-                      }`}
-                      style={{ width: isSeamBoundary ? 14 : 4 }}
-                      onMouseDown={isSeamBoundary ? handleBoundaryMouseDown : undefined}
-                    >
-                      <div className={`h-full rounded-full transition-all duration-100 ${
-                        isSeamBoundary
-                          ? isDragging
-                            ? "w-[3px] bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.4)]"
-                            : "w-[2px] bg-primary/40 group-hover:bg-primary/70 group-hover:w-[3px] group-hover:shadow-[0_0_6px_hsl(var(--primary)/0.2)]"
-                          : "w-px bg-border/15"
-                      }`} />
-                    </div>
+                    boundaryType === 'seam' ? (
+                      // Cross-source seam marker — NOT draggable
+                      <div className="flex-shrink-0 flex flex-col items-center justify-center relative" style={{ width: 20 }}>
+                        <div className="h-full w-[2px] bg-[hsl(var(--ccut-amber)/0.5)] rounded-full" />
+                        <div className="absolute top-1/2 -translate-y-1/2 px-1 py-px rounded bg-[hsl(var(--ccut-amber)/0.15)] border border-[hsl(var(--ccut-amber)/0.25)]">
+                          <span className="text-[6px] font-bold text-[hsl(var(--ccut-amber))] uppercase tracking-wider">seam</span>
+                        </div>
+                      </div>
+                    ) : (
+                      // Source-internal boundary — thin divider (no drag on rail, drag is on proportion bar)
+                      <div className="flex-shrink-0 flex items-center justify-center" style={{ width: 4 }}>
+                        <div className="h-full w-px bg-border/20 rounded-full" />
+                      </div>
+                    )
                   )}
                 </React.Fragment>
               );
@@ -361,110 +433,49 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
           </div>
         </div>
 
-        {/* Proportion Bar (비례바) */}
-        <div className="px-4 pt-1 pb-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wider">비례바</span>
-            <span className="text-[8px] text-muted-foreground/30 font-mono">
-              {leftFrag.fragment_id} {formatDuration(leftDuration)} : {rightFrag.fragment_id} {formatDuration(rightDuration)}
-            </span>
-          </div>
-          <div
-            className="relative w-full rounded-md overflow-hidden border border-border/20 bg-background/30"
-            style={{ height: 28 }}
-          >
-            {/* Left segment */}
-            <div
-              className="absolute top-0 left-0 h-full bg-primary/20 transition-[width] duration-75"
-              style={{ width: `${(leftDuration / (leftDuration + rightDuration)) * 100}%` }}
-            >
-              <div className="flex items-center justify-center h-full">
-                <span className="text-[9px] font-mono font-semibold text-primary/80">{leftDuration}f</span>
-              </div>
-            </div>
-            {/* Right segment */}
-            <div
-              className="absolute top-0 right-0 h-full bg-accent/30 transition-[width] duration-75"
-              style={{ width: `${(rightDuration / (leftDuration + rightDuration)) * 100}%` }}
-            >
-              <div className="flex items-center justify-center h-full">
-                <span className="text-[9px] font-mono font-semibold text-foreground/50">{rightDuration}f</span>
-              </div>
-            </div>
-            {/* Draggable handle */}
-            <div
-              className={`absolute top-0 h-full cursor-col-resize z-10 flex items-center justify-center group
-                ${isDragging ? '' : 'hover:scale-x-110'}`}
-              style={{
-                left: `calc(${(leftDuration / (leftDuration + rightDuration)) * 100}% - 8px)`,
-                width: 16,
-              }}
-              onMouseDown={handleBoundaryMouseDown}
-            >
-              <div className={`w-[3px] h-[18px] rounded-full transition-all duration-100 ${
-                isDragging
-                  ? "bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.5)]"
-                  : "bg-primary/50 group-hover:bg-primary group-hover:shadow-[0_0_6px_hsl(var(--primary)/0.3)]"
-              }`} />
-            </div>
-            {/* Min markers */}
-            <div
-              className="absolute top-0 h-full border-l border-dashed border-destructive/20 pointer-events-none"
-              style={{ left: `${(MIN_DURATION / (leftDuration + rightDuration)) * 100}%` }}
-            />
-            <div
-              className="absolute top-0 h-full border-r border-dashed border-destructive/20 pointer-events-none"
-              style={{ right: `${(MIN_DURATION / (leftDuration + rightDuration)) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Frame-level controls */}
-        <div className="px-4 pb-2">
-          <div className="flex items-center justify-center gap-1">
-            <button onClick={() => adjustBoundary(-5)}
-              className="px-2 py-1 rounded text-[9px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
-              <ChevronLeft size={10} className="inline -mt-px" />5f
-            </button>
-            <button onClick={() => adjustBoundary(-1)}
-              className="px-2 py-1 rounded text-[9px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
-              <ChevronLeft size={10} className="inline -mt-px" />1f
-            </button>
-
-            <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-secondary/20 border border-border/15 mx-1">
-              <div className="text-center">
-                <div className="text-[8px] text-muted-foreground/40 uppercase tracking-wider">경계</div>
-                <div className="text-[11px] font-mono font-semibold text-foreground/80">
-                  F{leftFrag.start_frame + leftDuration}
+        {/* Proportion Bars */}
+        <div className="px-4 pt-1 pb-2 space-y-3">
+          {isCrossSource && nextL && prevR ? (
+            <>
+              {/* Left source bar: L | next(L) */}
+              {renderProportionBar(leftFrag, nextL, 'left', `${leftFrag.source_video} 경계`)}
+              
+              {/* Seam marker between the two bars */}
+              <div className="flex items-center gap-2 py-0.5">
+                <div className="flex-1 h-px bg-[hsl(var(--ccut-amber)/0.15)]" />
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[hsl(var(--ccut-amber)/0.08)] border border-[hsl(var(--ccut-amber)/0.2)]">
+                  <span className="text-[8px] font-semibold text-[hsl(var(--ccut-amber)/0.7)] uppercase tracking-wider">
+                    cross-source seam
+                  </span>
+                  <span className="text-[9px] font-mono text-[hsl(var(--ccut-amber)/0.5)]">
+                    {nextL.fragment_id} ↔ {prevR.fragment_id}
+                  </span>
                 </div>
+                <div className="flex-1 h-px bg-[hsl(var(--ccut-amber)/0.15)]" />
               </div>
-            </div>
 
-            <button onClick={() => adjustBoundary(1)}
-              className="px-2 py-1 rounded text-[9px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
-              1f<ChevronRight size={10} className="inline -mt-px" />
-            </button>
-            <button onClick={() => adjustBoundary(5)}
-              className="px-2 py-1 rounded text-[9px] font-mono font-medium text-muted-foreground/60 hover:text-foreground/80 hover:bg-secondary/50 border border-border/15 transition-all">
-              5f<ChevronRight size={10} className="inline -mt-px" />
-            </button>
-          </div>
+              {/* Right source bar: prev(R) | R */}
+              {renderProportionBar(prevR, rightFrag, 'right', `${rightFrag.source_video} 경계`)}
+            </>
+          ) : (
+            /* Same-source: single bar L | R */
+            renderProportionBar(leftFrag, rightFrag, 'single', '비례바')
+          )}
         </div>
 
         {/* Change summary + actions */}
         <div className="px-4 py-2.5 border-t border-border/15 bg-secondary/15">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-[9px] text-muted-foreground/50">
-              {leftDiff !== 0 && (
-                <span className={leftDiff > 0 ? "text-green-400/70" : "text-red-400/70"}>
-                  {leftFrag.fragment_id}: {leftDiff > 0 ? "+" : ""}{leftDiff}f ({formatDuration(leftDuration)})
-                </span>
-              )}
-              {rightDiff !== 0 && (
-                <span className={rightDiff > 0 ? "text-green-400/70" : "text-red-400/70"}>
-                  {rightFrag.fragment_id}: {rightDiff > 0 ? "+" : ""}{rightDiff}f ({formatDuration(rightDuration)})
-                </span>
-              )}
+            <div className="flex items-center gap-3 text-[9px] text-muted-foreground/50 flex-wrap">
+              {railFragments.map(f => {
+                const diff = getDur(f) - f.duration;
+                if (diff === 0) return null;
+                return (
+                  <span key={f.fragment_id} className={diff > 0 ? "text-green-400/70" : "text-red-400/70"}>
+                    {f.fragment_id}: {diff > 0 ? "+" : ""}{diff}f ({formatDuration(getDur(f))})
+                  </span>
+                );
+              })}
               {!hasChanges && <span>변경 없음</span>}
             </div>
             <div className="flex items-center gap-1.5">
