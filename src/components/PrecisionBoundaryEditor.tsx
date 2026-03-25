@@ -17,8 +17,6 @@ interface PrecisionBoundaryEditorProps {
 }
 
 const MIN_DURATION = 15;
-const MAX_VISIBLE = 4;
-const DEFAULT_VISIBLE = 3;
 
 function prev(frag: Fragment): Fragment | null {
   const sourceFrags = allFragments[frag.source_video] || [];
