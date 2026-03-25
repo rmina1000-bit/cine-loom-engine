@@ -79,7 +79,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [draggingBar, setDraggingBar] = useState<string | null>(null);
-  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; barId: string }>({ startX: 0, origA: 0, origB: 0, barId: '' });
+  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; fragAId: string; fragBId: string }>({ startX: 0, origA: 0, origB: 0, fragAId: '', fragBId: '' });
   const rafId = useRef<number | null>(null);
 
   const leftFrag = target ? fragments[target.leftRealIndex] : null;
