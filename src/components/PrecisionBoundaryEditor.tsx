@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Fragment, allFragments, formatDuration } from "@/data/fragmentData";
 import { getFragmentThumbnail } from "@/data/thumbnailMap";
-import { X, Check, RotateCcw, ArrowLeftRight, ChevronLeft, ChevronRight, GripHorizontal } from "lucide-react";
+import { X, GripHorizontal } from "lucide-react";
 
 export interface BoundaryEditorTarget {
   leftRealIndex: number;
