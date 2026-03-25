@@ -305,6 +305,11 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
                       <div className="h-full w-[2px] bg-[hsl(var(--ccut-amber)/0.35)]" />
                     </div>
                   )}
+                  {boundary && boundary.type === 'context' && (
+                    <div className="flex-shrink-0 flex items-center justify-center" style={{ width: 4 }}>
+                      <div className="h-[40%] w-[1px] bg-border/20" />
+                    </div>
+                  )}
                 </React.Fragment>
               );
             })}
