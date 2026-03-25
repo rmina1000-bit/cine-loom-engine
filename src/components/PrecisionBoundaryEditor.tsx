@@ -79,7 +79,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [draggingBar, setDraggingBar] = useState<string | null>(null);
-  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; barId: string }>({ startX: 0, origA: 0, origB: 0, barId: '' });
+  const boundaryDragRef = useRef<{ startX: number; origA: number; origB: number; fragAId: string; fragBId: string }>({ startX: 0, origA: 0, origB: 0, fragAId: '', fragBId: '' });
   const rafId = useRef<number | null>(null);
 
   const leftFrag = target ? fragments[target.leftRealIndex] : null;
@@ -146,7 +146,7 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDraggingBar(barId);
-    boundaryDragRef.current = { startX: e.clientX, origA: durations[fragAId] ?? 0, origB: durations[fragBId] ?? 0, barId };
+    boundaryDragRef.current = { startX: e.clientX, origA: durations[fragAId] ?? 0, origB: durations[fragBId] ?? 0, fragAId, fragBId };
   }, [durations]);
 
   useEffect(() => {
@@ -159,16 +159,8 @@ const PrecisionBoundaryEditor: React.FC<PrecisionBoundaryEditorProps> = ({
         const newA = boundaryDragRef.current.origA + delta;
         const newB = boundaryDragRef.current.origB - delta;
         if (newA >= MIN_DURATION && newB >= MIN_DURATION) {
-          setDurations(prev => {
-            if (boundaryDragRef.current.barId === 'left' && leftFrag && nextL) {
-              return { ...prev, [leftFrag.fragment_id]: newA, [nextL.fragment_id]: newB };
-            } else if (boundaryDragRef.current.barId === 'right' && prevR && rightFrag) {
-              return { ...prev, [prevR.fragment_id]: newA, [rightFrag.fragment_id]: newB };
-            } else if (boundaryDragRef.current.barId === 'single' && leftFrag && rightFrag) {
-              return { ...prev, [leftFrag.fragment_id]: newA, [rightFrag.fragment_id]: newB };
-            }
-            return prev;
-          });
+          const { fragAId, fragBId } = boundaryDragRef.current;
+          setDurations(prev => ({ ...prev, [fragAId]: newA, [fragBId]: newB }));
         }
       });
     };
