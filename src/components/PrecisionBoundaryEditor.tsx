@@ -44,30 +44,47 @@ function uniquePush(list: Fragment[], item: Fragment | null) {
   }
 }
 
-function selectContextFragments(L: Fragment, R: Fragment, expanded = false): Fragment[] {
-  const visibleCount = expanded ? MAX_VISIBLE : DEFAULT_VISIBLE;
+/**
+ * v2 Selection & Placement Formula
+ * 
+ * SELECTION (what to pick):
+ *   same-source:  S = {prev(L), L, R, next(R)} \ {null}
+ *   cross-source: S = {L, next(L), prev(R), R} \ {null}
+ * 
+ * PLACEMENT (how to order):
+ *   same-source:  sortByOriginalIndex(S)
+ *   cross-source: sortByIdx([L, next(L)]) ⊕ sortByIdx([prev(R), R])
+ * 
+ * Max 4 fragments. Deterministic: same seam → same result.
+ */
+function selectContextFragments(L: Fragment, R: Fragment): Fragment[] {
   const isSameSource = L.source_video === R.source_video;
 
   if (isSameSource) {
-    // Build ordered window from source: [prev(L), L, R, next(R)]
-    const candidates = [prev(L), L, R, next(R)].filter(Boolean) as Fragment[];
-    candidates.sort((a, b) => originalIndex(a) - originalIndex(b));
+    // Selection: {prev(L), L, R, next(R)} \ {null}
+    const selected = [prev(L), L, R, next(R)].filter(Boolean) as Fragment[];
+    // Placement: sort by original source index, deduplicate
     const result: Fragment[] = [];
-    for (const item of candidates) {
-      uniquePush(result, item);
-      if (result.length >= visibleCount) break;
-    }
+    selected
+      .sort((a, b) => originalIndex(a) - originalIndex(b))
+      .forEach(item => uniquePush(result, item));
     return result;
   } else {
-    // Cross-source: start with L, R then add direct candidates by priority
+    // Selection & Placement:
+    // leftBlock  = sortByIdx([L, next(L)] \ {null})
+    // rightBlock = sortByIdx([prev(R), R] \ {null})
+    // result = leftBlock ⊕ rightBlock
+    const leftBlock = [L, next(L)]
+      .filter(Boolean) as Fragment[];
+    leftBlock.sort((a, b) => originalIndex(a) - originalIndex(b));
+
+    const rightBlock = [prev(R), R]
+      .filter(Boolean) as Fragment[];
+    rightBlock.sort((a, b) => originalIndex(a) - originalIndex(b));
+
     const result: Fragment[] = [];
-    uniquePush(result, L);
-    uniquePush(result, R);
-    const directCandidates = [next(L), prev(R), prev(L), next(R)];
-    for (const item of directCandidates) {
-      if (result.length >= visibleCount) break;
-      uniquePush(result, item);
-    }
+    leftBlock.forEach(item => uniquePush(result, item));
+    rightBlock.forEach(item => uniquePush(result, item));
     return result;
   }
 }
